@@ -1,7 +1,7 @@
 import argparse
 
 def get_arguments():
-    parser = argparse.ArgumentParser(description='We check for BAC because we got your back')
+    parser = argparse.ArgumentParser(description='Description: We check for BAC because we got your back')
     parser.add_argument('something', type=str, help='This can be anything')
     args = parser.parse_args()
     return args
