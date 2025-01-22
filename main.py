@@ -1,6 +1,5 @@
 import argparse
 import requests
-import threading
 
 def print_banner():
     try:
@@ -20,26 +19,43 @@ def get_arguments():
     This function can help us get arguments
     To add more arguments just copy that one line and change accordingly
     """
-    parser = argparse.ArgumentParser(description='Description: We check for BAC because we got your back')
+    parser = argparse.ArgumentParser(description='Description: We check for BAC because we got your back. For testing the wordlist can be any parameter. It will use the one that comes with this repo')
     parser.add_argument('target', type=str, help='hostname or ip address (omit http://)')     # COPY AND PASTE ME TO ADD MORE ARGUMENTS :)
+    parser.add_argument('wordlist', type=str, help='full path of wordlist (rockyou.txt / seclists)')
     args = parser.parse_args()
     return args
 
-def bustee(target):
+def wordlist_to_list(wordlist='fake_dictionary.txt'):
     """
-    This function is the busting one. 
+    This function takes in the wordlist file. Everyline in the wordlist will be an element in the list.
+    Returns a list.
     """
-    #print(f'[*] We are attacking: http://{target} (not recursive)')
-    print(f'[*] This one testing phase so we attack: https://juice-shop.herokuapp.com/#/ (hardcoded)')
+    with open (wordlist, 'r') as file:
+        lines = file.readlines()
+    return [line.strip() for line in lines]
 
-    x = requests.get('http://')
-    print(x.status_code)
+def bustee(target, directories):
+    """
+    This function is the busting one if can maybe add threads
+    Target is hardcoded to the dvwa address for testing purposes
+    """
+    target = 'http://127.0.0.1:42001'
+    #print(f'[*] We are attacking: http://{target} with wordlist {wordlist} (not recursive)')
+    print(f'[*] This one testing so we attack: dvwa (hardcoded) with a sample wordlist')
+    
+    for directory in directories:
+        attack = requests.get(f'{target}/{directory}')
+        print(f'[*] {target}/{directory} (Status code: {attack.status_code})')
 
 def main():
-    print_banner()
-    args = get_arguments()
+    """
+    python main.py x.x.x.x blah (for testing)
+    """
+    print_banner()  
+    args = get_arguments()  # Get arguments
 
-    bustee(args.target)
+    directories = wordlist_to_list()    # Fetch the wordlist
+    bustee(args.target, directories)    # The actual gobuster
 
 if __name__ == '__main__':
     main()
