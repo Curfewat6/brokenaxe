@@ -24,7 +24,7 @@ def get_arguments():
     parser.add_argument('wordlist', type=str, help='full path of wordlist (rockyou.txt / seclists)')
     parser.add_argument('-u', '--username', type=str, help='Username for login')
     parser.add_argument('-p', '--password', type=str, help='Password for login')
-    parser.add_argument('--login_page', type=str, help='Page for Login (e.g. login.php)')
+    parser.add_argument('--auth', type=str, help='Authenticate User/Process Credentisal (e.g. process_login.php)')
     args = parser.parse_args()
     return args
 
@@ -63,19 +63,23 @@ def automated_login(username, password, login_url):
         'pwd': password,    # Form field for password
     }
     try:
-        login_response = session.post(login_url, data=login_data) # Send the POST request, not sure if need verify=False
-        login_response.raise_for_status()   # Raise an exception if the status code is not 200
+        login_response = session.post(login_url, data=login_data, allow_redirects=False) # Send the POST request, not sure if need verify=False
+        
+        # Step 2: Check if a redirect (302) happens
+        if login_response.status_code == 302:
+            redirect_location = login_response.headers.get("Location", "")
+            print(f"[+] Redirected to: {redirect_location}")
+            
+            if 'index.php' in redirect_location:
+                print("[+] Login successful!")
+                return session # Return the session object for further requests/Hold onto the session
+            else:
+                return None
+            
     except requests.exceptions.RequestException as e:
         print(f"Error during login: {e}")
         return None
-    
-    # Step 2: Check if login was successful by examining the status code
-    if login_response.status_code == 200:
-        print("[+] Login successful!")
-        return login_response.status_code
-    else:
-        print(f"[-] Login failed. Status code: {login_response.status_code}")
-        return None
+
         
 
 def main():
@@ -85,19 +89,23 @@ def main():
     print_banner()  
     args = get_arguments()  # Get arguments
     
+    session = None    # Initialize session object
+    
     # Check if login credentials and page are provided
-    if args.username and args.password and args.login_page:
+    if args.username and args.password and args.auth:
         # Construct the full login URL by appending the login page to the target
-        login_url = f"http://{args.target}/{args.login_page}"
+        login_url = f"http://{args.target}/{args.auth}"
     
         # Perform automated login
-        status_code = automated_login(args.username, args.password, login_url)
-        if status_code != 200:
+        session = automated_login(args.username, args.password, login_url)
+        if session is None:
             print("[-] Automated login failed.")
             
     else:
         print("[*] No login credentials provided. Proceeding with unauthenticated scan.")
         # session = None
+        
+    print(f"[*] Captured Session: {session}")
 
 
     directories = wordlist_to_list()    # Fetch the wordlist
