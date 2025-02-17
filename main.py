@@ -294,11 +294,11 @@ def forced_browsing(session, url):
         since it is reliant on status codes. """
     r = session.get(url, timeout=10, verify=False)
     if r.status_code == 200:
-        print(f"Broken access control in admin-protected portal: {url}")
+        print(f"\nBroken access control in admin-protected portal: {url}")
     elif r.status_code == 404:
-        print(f"Page ({url}) does not exist")
+        print(f"\nPage ({url}) does not exist")
     else:
-        print(f"Access control appears to be working: {url}")
+        print(f"\nAccess control appears to be working: {url}")
 
 def get_arguments():
     parser = argparse.ArgumentParser(
@@ -404,7 +404,7 @@ def main():
     while True:
         forced_browsing_input = input("\nTest forced browsing? (Default [N]): ").strip().lower()
         if forced_browsing_input == 'y':
-            page = input("Enter the page to test for forced browsing (e.g., admin.php): ").strip()
+            page = input("\nEnter the page to test for forced browsing (e.g., admin.php): ").strip()
             if page:
                 forced_browsing(session, urljoin(base_url, page))
             break
