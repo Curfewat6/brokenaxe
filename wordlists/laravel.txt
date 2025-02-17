@@ -1,0 +1,9 @@
+.env
+storage
+vendor
+bootstrap
+app
+config
+database
+routes
+composer.lock

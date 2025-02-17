@@ -1,0 +1,8 @@
+wp-admin
+wp-login.php
+wp-content
+wp-includes
+xmlrpc.php
+wp-config.php
+license.txt
+readme.html

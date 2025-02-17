@@ -1,0 +1,4 @@
+syntax error
+mysql
+root:x:0:0:
+[boot loader]

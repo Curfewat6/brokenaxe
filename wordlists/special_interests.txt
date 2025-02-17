@@ -1,0 +1,5 @@
+admin
+login
+?id=
+config
+backup

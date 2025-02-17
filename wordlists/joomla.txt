@@ -1,0 +1,8 @@
+administrator
+components
+modules
+plugins
+templates
+libraries
+language
+installation
