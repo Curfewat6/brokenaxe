@@ -295,6 +295,8 @@ def forced_browsing(session, url):
     r = session.get(url, timeout=10, verify=False)
     if r.status_code == 200:
         print(f"Broken access control in admin-protected portal: {url}")
+    elif r.status_code == 404:
+        print(f"Page ({url}) does not exist")
     else:
         print(f"Access control appears to be working: {url}")
 
