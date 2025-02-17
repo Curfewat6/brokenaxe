@@ -233,13 +233,12 @@ def level_based_scan(session,
                 print(f"Error accessing {current_url}: {e}")
                 continue
 
-            # If accessible, add to final results if not already added
+            # Add current URL to results if it returns a valid status.
             if response.status_code in [200, 403, 401]:
-                # Only add if not already in results
                 if not any(r[0] == current_url for r in results):
                     results.append((current_url, response.status_code))
 
-            # Print discovered page if not the base
+            # For non-base pages, print additional info and perform checks.
             if current_url != base_url:
                 print(f"  -> Discovered Page: {current_url} (Status: {response.status_code})")
                 if response.status_code in [200, 403, 401]:
@@ -247,18 +246,29 @@ def level_based_scan(session,
                     check_directory_traversal(session, current_url, traversal_payloads, traversal_signatures)
 
             if response.status_code in [200, 403, 401]:
-                # Param injection checks
+                # Parameter injection checks.
                 test_param_injection(session, current_url, injection_payloads, injection_signatures)
 
-                # Extract internal links
+                # Extract internal links.
                 internal_links = extract_internal_links(session, response.text, current_url, base_netloc)
                 for link in internal_links:
                     if link not in visited:
                         print(f"  -> Discovered Page: {link}")
                         visited.add(link)
-                        next_level.append(link)
+                        if max_depth == 1:
+                            # For depth 1, immediately scan and add the discovered page.
+                            try:
+                                r = session.get(link, timeout=10, verify=False)
+                                print(f"    -> Scanned Discovered Page: {link} (Status: {r.status_code})")
+                                results.append((link, r.status_code))
+                            except Exception as e:
+                                print(f"Error accessing {link}: {e}")
+                                results.append((link, None))
+                        else:
+                            # For deeper scans, queue the link for further processing.
+                            next_level.append(link)
 
-                # Concurrently probe directories
+                # Concurrently probe directories.
                 with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
                     future_to_word = {
                         executor.submit(
@@ -278,11 +288,13 @@ def level_based_scan(session,
                             visited.add(found_url)
                             results.append((found_url, status_code))
                             flagged_interests.update(flagged_set)
-                            next_level.append(found_url)
+                            if max_depth != 1:
+                                next_level.append(found_url)
 
         current_level = list(set(next_level))
 
     return results, flagged_interests
+
 
 def get_arguments():
     parser = argparse.ArgumentParser(
