@@ -9,25 +9,19 @@ from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 # Disable warnings for insecure SSL connections
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-
 def print_banner():
-    try:
-        with open('axe.txt', 'r') as banner:
-            print(banner.read())
-            print()
-    except FileNotFoundError:
-        print('[!] Banner not found\n')
-    
-    except UnicodeDecodeError:
-        print('[!] Error decoding banner\n')
-        
-
-def wordlist_to_list(wordlist):
-    """Reads the wordlist file and returns a list of directories."""
-    with open(wordlist, 'r') as file:
-        lines = file.readlines()
-    return [line.strip() for line in lines]
-
+    banner = r""" 
+    ▀█████████▄  ▄████████  ▄██████▄     ▄█   ▄█▄    ▄████████ ███▄▄▄▄      ▄████████ ▀████    ▐████▀    ▄████████      
+    ███    ███   ███    ███ ███    ███   ███ ▄███▀   ███    ███ ███▀▀▀██▄   ███    ███   ███▌   ████▀    ███    ███      
+    ███    ███   ███    ███ ███    ███   ███▐██▀     ███    █▀  ███   ███   ███    ███    ███  ▐███      ███    █▀       
+    ▄███▄▄▄██▀ ▄███▄▄▄▄██▀ ███    ███  ▄█████▀     ▄███▄▄▄     ███   ███   ███    ███    ▀███▄███▀     ▄███▄▄▄          
+    ▀▀███▀▀▀██▄▀▀███▀▀▀▀▀   ███    ███ ▀▀█████▄    ▀▀███▀▀▀     ███   ███ ▀███████████    ████▀██▄     ▀▀███▀▀▀          
+    ███    ██▄  ▀███████████ ███    ███   ███▐██▄     ███    █▄  ███   ███   ███    ███   ▐███  ▀███      ███    █▄       
+    ███    ███   ███    ███ ███    ███   ███ ▀███▄   ███    ███ ███   ███   ███    ███  ▄███     ███▄    ███    ███      
+    ▄█████████▀  ███    ███  ▀██████▀    ███   ▀█▀   ██████████  ▀█   █▀    ███    █▀  ████       ███▄   ██████████      
+                 ███    ███              ▀                                                                               
+    """
+    print(banner)
 
 def load_wordlist(file_path):
     if not os.path.exists(file_path):
@@ -52,14 +46,14 @@ def automated_login(username_field, username, password_field, password, login_ur
                                       allow_redirects=False, verify=False)    
         
         if login_response.status_code == 200:
-            print("Login successful!")
+            print("Login successful")
         elif login_response.status_code == 302:
             redirect_location = login_response.headers.get("Location", "")
             print(f"[+] Redirected to: {redirect_location}")
             if 'index.php' in redirect_location:
-                print("[+] Login successful!")
+                print("[+] Login successful")
         else:
-            print("Login failed!")
+            print("Login failed")
         return session
             
     except requests.exceptions.RequestException as e:
@@ -295,6 +289,14 @@ def level_based_scan(session,
 
     return results, flagged_interests
 
+def forced_browsing(session, url):
+    """ False-positive prone test for forced browsing
+        since it is reliant on status codes. """
+    r = session.get(url, timeout=10, verify=False)
+    if r.status_code == 200:
+        print(f"Broken access control in admin-protected portal: {url}")
+    else:
+        print(f"Access control appears to be working: {url}")
 
 def get_arguments():
     parser = argparse.ArgumentParser(
@@ -324,7 +326,6 @@ def main():
             print("[-] Incorrect format for username or password. Use: -u email:steve@email.com -p pwd:steve")
             return
         login_url = f"{args.target}/{args.auth}"
-        print(login_url)
         session = automated_login(userfield, username, passfield, password, login_url)
         if session is None:
             print("[-] Automated login failed.")
@@ -341,8 +342,9 @@ def main():
 
     # Fingerprint
     fp_result = fingerprint_site(session, base_url)
+    print("\n[===== Directory Traversal scans & crawling =====]")
     if fp_result:
-        print("\n[+] Fingerprinting Results:")
+        print("[+] Fingerprinting Results:")
         for key, value in fp_result.items():
             print(f"    {key}: {value}")
     else:
@@ -396,6 +398,18 @@ def main():
             print(f"    {url} (keyword: {keyword})")
     else:
         print("    None.")
+    
+    while True:
+        forced_browsing_input = input("\nTest forced browsing? (Default [N]): ").strip().lower()
+        if forced_browsing_input == 'y':
+            page = input("Enter the page to test for forced browsing (e.g., admin.php): ").strip()
+            if page:
+                forced_browsing(session, urljoin(base_url, page))
+            break
+        else:
+            break
+
+    
 
 if __name__ == "__main__":
     main()
