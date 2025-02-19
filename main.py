@@ -529,9 +529,10 @@ def main():
                 #######################
                 
                 flagged_api = {item for item in flagged if "api" in item[0].lower()}
+                print(flagged_api)
                 for links in flagged_api:
-                    links2 = extract_internal_links(session, session.get(links[0], timeout=10, verify=False).text, links[0], urlparse(url).netloc)
-                print(links2)
+                    url = links[0]
+                    links2 = extract_internal_links(session, session.get(url, timeout=10, verify=False).text, url, urlparse(url).netloc)
                 api_links = set()
 
                 for links in links2:
@@ -590,7 +591,7 @@ def main():
                 break
     session.close()
 
-        
+
 
 if __name__ == "__main__":
     main()
