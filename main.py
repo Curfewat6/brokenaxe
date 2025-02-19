@@ -337,9 +337,9 @@ def check_idor(links, session, flagged_set, userfield, username, passfield, pass
         sizes['yours'] = len(r.text)
         r = session.get(url.split('=')[0] + "=098322", timeout=10, verify=False)
         sizes['nonexistent'] = len(r.text)
-        skidibi(url, "IDOR", session, flagged_set, sizes)
+        skidibi(url, "IDOR", session, flagged_set, sizes, sizes['nonexistent'], sizes['yours'])
 
-def skidibi(url, keyword, session, flagged_set, sizes, iterations=24):
+def skidibi(url, keyword, session, flagged_set, sizes, nonexistent, yours, iterations=24):
     """
     data types
     url: string
@@ -347,12 +347,14 @@ def skidibi(url, keyword, session, flagged_set, sizes, iterations=24):
     session: requests.Session
     flagged_set: set
     sizes: dictionary
+    nonexistent: int
+    yours: int
     iterations: int
     """
     for attempt in range(iterations):
         r = session.get(url.split('=')[0] + f"={attempt}", timeout=10, verify=False)
         sizes[attempt] = len(r.text)
-        if len(r.text) != sizes['nonexistent'] and len(r.text) != sizes['yours']:
+        if len(r.text) != nonexistent and len(r.text) != yours:
             print(f"    [!] Potential {keyword} found: {url.split('=')[0]}={attempt}")
             flagged_set.add((f"{url.split('=')[0]}={attempt}", keyword))
     return flagged_set
