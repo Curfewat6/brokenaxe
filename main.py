@@ -531,7 +531,7 @@ def main():
                 #################################################
                 
                 flagged_api = {item for item in flagged if "api" in item[0].lower()}
-                print(flagged_api)
+                
                 for links in flagged_api:
                     url = links[0]
                     links2 = extract_internal_links(session, session.get(url, timeout=10, verify=False).text, url, urlparse(url).netloc)
