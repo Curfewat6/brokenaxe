@@ -3,8 +3,13 @@ import concurrent.futures
 import requests
 import urllib3
 import os
+import re
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
+
+# regex patterns (constant)
+IDOR = re.compile(r"https?://[^\s]*\?.*=.*")
+UNIQUE = re.compile(r'/([^/]+\.php)')
 
 # Disable warnings for insecure SSL connections
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -46,6 +51,7 @@ def automated_login(username_field, username, password_field, password, login_ur
                                       allow_redirects=False, verify=False)    
         
         if login_response.status_code == 200:
+            
             print("Login successful")
         elif login_response.status_code == 302:
             redirect_location = login_response.headers.get("Location", "")
@@ -124,12 +130,19 @@ def extract_internal_links(session, html, current_url, base_netloc):
             links.add(clean_url)
     return links
 
-def check_special_interest(url, special_keywords, flagged_set):
+def check_special_interest(url, special_keywords, flagged_set, session):
     url_lower = url.lower()
     for kw in special_keywords:
         if kw.lower() in url_lower:
             flagged_set.add((url, kw))
             print(f"    [!] Potential interest: {url} (keyword: {kw})")
+    # for link in links:
+    #     if re.search(IDOR, link):
+    #         if idor_present(link, session):
+    #             flagged_set.add((link, "IDOR"))
+    # check_idor(url, session, links, flagged_set)
+
+
 
 def check_directory_traversal(session, url, traversal_payloads, traversal_signatures):
     for payload in traversal_payloads:
@@ -185,7 +198,7 @@ def scan_word(session,
         if r.status_code in [200, 403, 401]:
             print(f"  Found: {target_url} (Status: {r.status_code})")
             flagged_set = set()
-            check_special_interest(target_url, special_interests, flagged_set)
+            check_special_interest(target_url, special_interests, flagged_set,session)
             check_directory_traversal(session, target_url, traversal_payloads, traversal_signatures)
             return (target_url, r.status_code, flagged_set)
     except Exception as e:
@@ -272,7 +285,7 @@ def level_based_scan(session,
                             word,
                             special_interests,
                             traversal_payloads,
-                            traversal_signatures
+                            traversal_signatures,
                         ): word
                         for word in words
                     }
@@ -286,8 +299,62 @@ def level_based_scan(session,
                                 next_level.append(found_url)
 
         current_level = list(set(next_level))
+    print(session.cookies.get_dict())
+    # Based on ryan's scan, get all links with the ?*= pattern
+    # suspicious_idors = get_idor(results)
+    check_idor(results, session, flagged_interests)
 
     return results, flagged_interests
+
+def check_idor(links, session, flagged_set):
+    """
+    1. Perform a get request with your own parameter and capture the length
+    2. Perform a get request with a non existent parameter and capture the length
+    3. Now do ?*=x++ and check for length difference
+    """
+    urls = set()
+    print(f'BEFORE LOGIN: {session.cookies.get_dict()}')
+    for link in links:
+        if re.search(IDOR, link[0]):
+            urls.add(link[0])
+    print(f"\n[===== IDOR Scans =====] ONLY WORKS FOR product_page")
+    idor_links = get_idor(list(urls))
+    session = automated_login(userfield, username, passfield, password, login_url)
+    print(f'AFTER LOGIN: {session.cookies.get_dict()}')
+    for url in idor_links:
+        print(f"\nScanning: {url}")
+        sizes = {}
+        # place_holder = f'{url.split('=')[0]}?'
+        r = session.get(url, timeout=10, verify=False)
+        sizes['yours'] = len(r.text)
+        r = session.get(url.split('=')[0] + "=098322", timeout=10, verify=False)
+        sizes['nonexistent'] = len(r.text)
+        for attempt in range(24):
+            r = session.get(url.split('=')[0] + f"={attempt}", timeout=10, verify=False)
+            # print("Attempting"+ url.split('=')[0] + f"={attempt}")
+            sizes[attempt] = len(r.text)
+            if len(r.text) != sizes['nonexistent'] and len(r.text) != sizes['yours']:
+                print(f"    [!] Potential IDOR found: {url.split('=')[0]}={attempt}")
+                flagged_set.add((f'{url.split('=')[0]}={attempt}', "IDOR"))
+
+def get_idor(urls):
+    """
+    Return a unique list of URLs that contain the ?*= pattern
+    """
+    unique_pages = {}
+    links = []
+    for url in urls:
+        match = re.search(UNIQUE, url)
+        if match:
+            page_type = match.group(1)  # Extracts the PHP page like 'product_page.php'
+            if page_type not in unique_pages:
+                unique_pages[page_type] = url
+
+    # Print one URL from each unique page type
+    for key, value in unique_pages.items():
+        links.append(value)
+
+    return links
 
 def forced_browsing(session, url):
     """ False-positive prone test for forced browsing
@@ -318,6 +385,11 @@ def main():
     args = get_arguments()
     session = None 
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    global username
+    global userfield
+    global password
+    global passfield
+    global login_url
 
     # Optional login
     if args.username and args.password and args.auth:
@@ -336,7 +408,7 @@ def main():
         print("[*] No login credentials provided. Proceeding with unauthenticated scan.")
         session = requests.Session()
 
-    print(f"[*] Captured Session: {session}")
+    print(f"[*] Captured Session: {session.cookies.get_dict()}")
     
     base_url = args.target.rstrip("/")
     max_depth = args.depth
