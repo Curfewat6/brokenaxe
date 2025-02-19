@@ -5,6 +5,8 @@ import urllib3
 import os
 import re
 from bs4 import BeautifulSoup
+import subprocess
+import sys
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 
 # regex patterns (constant)
@@ -410,6 +412,41 @@ def test_api_endpoints(session, api_links, found_queries):
                 print(f"    [!] Error: {e}")
     return api_links_to_test
 
+#############################################
+def test_session_management(session):
+
+    # check curernt cookie after logging in
+    cookies = session.cookies.get_dict()
+    print(f"[After Login] Cookies: {cookies}")
+
+    # logout and capture cookie
+    logout_url = 'https://35.212.180.132/logout.php'
+    confirm_url = 'https://35.212.180.132/console.php'
+    session.get(logout_url, verify=False, allow_redirects=True)
+
+    logout_response = session.get(confirm_url, verify=False, allow_redirects=False)
+    if logout_response.status_code == 302:
+        print("[+] Logout successful")
+
+    logout_cookies = session.cookies.get_dict()
+    if (cookies == logout_cookies):
+        print(f"[After Logout] Cookies: {logout_cookies}")
+        print(f'[!] Cookie was not destroyed at logout')
+
+    # set the cookie and then login 
+    session = requests.Session()
+    for key, value in logout_cookies.items():
+        session.cookies.set(key, value)
+    automated_login(userfield, username, passfield, password, login_url)
+
+    login_cookies = session.cookies.get_dict()
+    if (login_cookies == logout_cookies):
+        print(f"[After Login (again)] Cookies: {login_cookies}")
+        print(f'[!] Cookie was not regenerated at login') 
+
+    return session   
+##############################################
+
 def get_arguments():
     parser = argparse.ArgumentParser(
         description="---",
@@ -421,6 +458,7 @@ def get_arguments():
     parser.add_argument('--auth', type=str, help='Authentication endpoint (e.g., process_login.php)')
     parser.add_argument("-d", "--depth", default=1, type=int, help="Max scanning depth (default: 1)")
     parser.add_argument("-t", "--threads", default=5, type=int, help="Number of threads (default: 5)")
+    parser.add_argument("-sm", "--sessionmanagement", action="store_true", help="test session management")
     return parser.parse_args()
 
 def main():
@@ -447,6 +485,47 @@ def main():
     else:
         print("[*] No login credentials provided. Proceeding with unauthenticated scan.")
         session = requests.Session()
+
+    ########################################
+    if args.sessionmanagement:
+        test_session_management(session)
+        sys.exit(1)
+
+    #################################################################################################################################################
+    if session:
+        while True:
+            session_replay_input = input("\nTest for Session Replay? (Default [N]): ").strip().lower()
+            if session_replay_input == 'y':
+                # Get user input for username and password
+                comparison_username = input("Enter username (optional): ").strip() # Stella@email.com
+                comparison_password = input("Enter password (optional): ").strip() # $t3lla
+                protected_page = input("Enter protected page (required): ").strip() # https://35.212.180.132/console.php
+
+                if comparison_username and comparison_password and protected_page:
+                    cookies = session.cookies.get_dict()
+                    session_id = cookies.get('PHPSESSID')
+                    print(f"Captured Session ID: {session_id}")
+
+                    # Construct arguments list (use correct variable names)
+                    session_replay_args = [session_id, protected_page, userfield, comparison_username, passfield, comparison_password, login_url]
+
+                    # Run session_replay.py with user inputs
+                    subprocess.run(["python", "session_replay.py"] + session_replay_args)
+                elif protected_page:
+                    cookies = session.cookies.get_dict()
+                    session_id = cookies.get('PHPSESSID')
+                    print(f"Captured Session ID: {session_id}")
+                    
+                    # Construct arguments list (use correct variable names)
+                    session_replay_args = [session_id, protected_page]
+
+                    # Run session_replay.py with user inputs
+                    subprocess.run(["python", "session_replay.py"] + session_replay_args)
+                break
+            else:
+                break
+    #################################################################################################################################################
+
 
     print(f"[*] Captured Session: {session.cookies.get_dict()}")
     
