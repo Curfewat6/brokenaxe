@@ -342,7 +342,7 @@ def check_idor(links, session, flagged_set):
             sizes[attempt] = len(r.text)
             if len(r.text) != sizes['nonexistent'] and len(r.text) != sizes['yours']:
                 print(f"    [!] Potential IDOR found: {url.split('=')[0]}={attempt}")
-                flagged_set.add((f'{url.split('=')[0]}={attempt}', "IDOR"))
+                flagged_set.add((f"{url.split('=')[0]}={attempt}", "IDOR"))
 
 def get_idor(urls):
     """
@@ -527,8 +527,11 @@ def main():
                 else:
                     session = automated_login(userfield, username, passfield, password, login_url)
                 #######################
-
-                links2 = extract_internal_links(session, session.get(url, timeout=10, verify=False).text, url, urlparse(url).netloc)
+                
+                flagged_api = {item for item in flagged if "api" in item[0].lower()}
+                for links in flagged_api:
+                    links2 = extract_internal_links(session, session.get(links[0], timeout=10, verify=False).text, links[0], urlparse(url).netloc)
+                print(links2)
                 api_links = set()
 
                 for links in links2:
