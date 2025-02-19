@@ -8,7 +8,4 @@ include
 tmp
 test
 robots.txt
-profile.php
-product
-product_list
-product_page
+api

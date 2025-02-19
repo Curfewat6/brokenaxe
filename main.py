@@ -58,6 +58,8 @@ def automated_login(username_field, username, password_field, password, login_ur
             print(f"[+] Redirected to: {redirect_location}")
             if 'index.php' in redirect_location:
                 print("[+] Login successful")
+            else:
+                print("[-] Login failed, continuing as unauthenticated user")
         else:
             print("Login failed")
         return session
@@ -123,6 +125,11 @@ def extract_internal_links(session, html, current_url, base_netloc):
     links = set()
     for tag in soup.find_all('a', href=True):
         href = tag['href']
+
+        # Ignore Apache sorting query parameters
+        if href.startswith("?C="):
+            continue
+        
         absolute_url = urljoin(current_url, href)
         parsed = urlparse(absolute_url)
         if parsed.netloc == base_netloc:
@@ -367,6 +374,29 @@ def forced_browsing(session, url):
     else:
         print(f"\nAccess control appears to be working: {url}")
 
+def challenge_api(session, api_endpoints):
+    for test in api_endpoints:    
+        try:
+            response = session.get(test, timeout=10, verify=False)
+            print(f"[+] Testing API: {test}     (Status: {response.status_code})")
+        except requests.exceptions.RequestException as e:
+            print(f"[!] Error: {e}")
+
+def test_api_endpoints(session, api_links, found_queries):
+    api_links_to_test = []
+    for api in api_links:
+        for query in found_queries:
+            full_api_url = f"{api}/?{query}"
+            try:
+                response = session.get(full_api_url, timeout=10, verify=False)
+                print(f"[+] Testing API: {full_api_url}     (Status: {response.status_code})")
+                if response.status_code == 200:
+                    api_links_to_test.append(full_api_url)
+                    print(f"    [!] Potential API query: {query}")
+            except requests.exceptions.RequestException as e:
+                print(f"    [!] Error: {e}")
+    return api_links_to_test
+
 def get_arguments():
     parser = argparse.ArgumentParser(
         description="---",
@@ -376,7 +406,7 @@ def get_arguments():
     parser.add_argument('-u', '--username', type=str, help='Username field and value (e.g., email:steve@email.com)')
     parser.add_argument('-p', '--password', type=str, help='Password field and value (e.g., pwd:steve)')
     parser.add_argument('--auth', type=str, help='Authentication endpoint (e.g., process_login.php)')
-    parser.add_argument("-d", "--depth", default=1, type=int, help="Max scanning depth (default: 3)")
+    parser.add_argument("-d", "--depth", default=1, type=int, help="Max scanning depth (default: 1)")
     parser.add_argument("-t", "--threads", default=5, type=int, help="Number of threads (default: 5)")
     return parser.parse_args()
 
@@ -401,6 +431,7 @@ def main():
             return
         login_url = f"{args.target}/{args.auth}"
         session = automated_login(userfield, username, passfield, password, login_url)
+        
         if session is None:
             print("[-] Automated login failed.")
             return
@@ -473,6 +504,7 @@ def main():
     else:
         print("    None.")
     
+    # Forced browsing
     while True:
         forced_browsing_input = input("\nTest forced browsing? (Default [N]): ").strip().lower()
         if forced_browsing_input == 'y':
@@ -483,7 +515,79 @@ def main():
         else:
             break
 
-    
+    # API endpoint testing
+    if any("api" in url.lower() for url, _ in flagged):
+        while True:
+            api_input = input("\nTest for vulnerable API endpoint? (Default [N]): ").strip().lower()
+            if api_input == 'y':
+
+                ### Can be improved ###
+                if args.username is None:
+                    session = requests.Session()
+                else:
+                    session = automated_login(userfield, username, passfield, password, login_url)
+                #######################
+
+                links2 = extract_internal_links(session, session.get(url, timeout=10, verify=False).text, url, urlparse(url).netloc)
+                api_links = set()
+
+                for links in links2:
+                    parsed = urlparse(links)
+                    if parsed.path != '':
+                        api_url = urljoin(url + "/", parsed.path.lstrip("/"))
+                        api_links.add(api_url)
+
+                for api in api_links:
+                    print(f"[!] Potential API endpoint: {api}")
+
+                found_queries = set()
+                for link, _ in found_results:
+                    parsed_url = urlparse(link)
+                    if parsed_url.query:
+                        found_queries.add(parsed_url.query)
+
+                ### Can be improved ###
+                if args.username is None:
+                    session = requests.Session()
+                else:
+                    session = automated_login(userfield, username, passfield, password, login_url)
+                #######################
+
+                api_endpoints = test_api_endpoints(session, api_links, found_queries)
+                if not api_endpoints:
+                    print("[-] No potential API endpoints found.")
+                    break
+
+                api_input2 = input("\nEnter another valid credential to test for Weak API controls? (Default [N]): ").strip().lower()
+                if api_input2 == 'y':
+                    username2 = input("\nEnter the username: ").strip()
+                    password2 = input("Enter the password: ").strip()
+
+                    if args.username is None:
+                        login_url = input("Enter the authentication endpoint: ").strip()
+                        login_url = f"{args.target}/{login_url}"
+                        print(login_url)
+                        try:
+                            userfield, username = username2.split(':')
+                            passfield, password = password2.split(':')
+                        except ValueError:
+                            print("[-] Incorrect format for username or password. Use: -u email:steve@email.com -p pwd:steve")
+                            return
+                        print(userfield, username, passfield, password)
+
+                    session = automated_login(userfield, username2, passfield, password2, login_url)
+                    print(f"\nInvoking API with account: {username2}...\n")
+                    challenge_api(session, api_endpoints)
+                    print(f"\nInvoking API with unauthenticated session...\n")
+                    for endpoints in api_endpoints:
+                        print(f"[+] Testing API: {endpoints}    (Status: {requests.get(endpoints, timeout=10, verify=False).status_code})")
+                
+                break
+            else:
+                break
+    session.close()
+
+        
 
 if __name__ == "__main__":
     main()

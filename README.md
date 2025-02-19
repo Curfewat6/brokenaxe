@@ -4,7 +4,7 @@
 <s>Forced Browsing</s><br>
 Bypassing RBAC (Role-based access control)<br>
 Bypassing Function level access control<br>
-Weak API controls<br>
+<s>Weak API controls</s><br>
 Session replay<br>
 <s>Directory traversal</s></p>
 
