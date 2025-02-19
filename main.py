@@ -583,12 +583,24 @@ def main():
 
                     session = automated_login(userfield, username2, passfield, password2, login_url)
                     print(f"\nInvoking API with account: {username2}...\n")
+                    
                     challenge_api(session, api_endpoints)
                     print(f"\nInvoking API with unauthenticated session...\n")
                     for endpoints in api_endpoints:
                         print(f"[+] Testing API: {endpoints}    (Status: {requests.get(endpoints, timeout=10, verify=False).status_code})")
                 
-                break
+                api_idor = input("\nTest for IDOR in API endpoints? (Default [N]): ").strip().lower()
+                if api_idor == 'y':
+                    api_idor_set = set()
+                    for endpoints in api_endpoints:
+                        lhs, _ = endpoints.split("?")
+                        a = session.get(lhs, timeout=10, verify=False)
+                        print(a.text)
+
+                        # api_idor_set.add(lhs)
+                    
+
+
             else:
                 break
     session.close()
