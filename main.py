@@ -416,7 +416,7 @@ def main():
     args = get_arguments()
     session = None 
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
+    userfield, username, passfield, password, login_url = None, None, None, None, None
     # Optional login
     if args.username and args.password and args.auth:
         try:
