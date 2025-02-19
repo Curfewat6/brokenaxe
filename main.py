@@ -39,7 +39,7 @@ def load_wordlist(file_path):
         ]
 
 def automated_login(username_field, username, password_field, password, login_url):
-    """Attempts to log in using the provided credentials"""
+    """ Attempts to log in using the provided credentials """
     session = requests.Session()
     login_data = {
         username_field: username,
@@ -50,18 +50,17 @@ def automated_login(username_field, username, password_field, password, login_ur
         login_response = session.post(login_url, data=login_data, 
                                       allow_redirects=False, verify=False)    
         
-        if login_response.status_code == 200:
-            
-            print("Login successful")
-        elif login_response.status_code == 302:
-            redirect_location = login_response.headers.get("Location", "")
-            print(f"[+] Redirected to: {redirect_location}")
-            if 'index.php' in redirect_location:
-                print("[+] Login successful")
-            else:
-                print("[-] Login failed, continuing as unauthenticated user")
-        else:
-            print("Login failed")
+        # if login_response.status_code == 200:
+        #     print("Login successful")
+        # elif login_response.status_code == 302:
+        #     redirect_location = login_response.headers.get("Location", "")
+        #     print(f"[+] Redirected to: {redirect_location}")
+        #     if 'index.php' in redirect_location:
+        #         print("[+] Login successful")
+        #     else:
+        #         print("[-] Login failed, continuing as unauthenticated user")
+        # else:
+        #     print("Login failed")
         return session
             
     except requests.exceptions.RequestException as e:
@@ -304,7 +303,7 @@ def level_based_scan(userfield,
                                 next_level.append(found_url)
 
         current_level = list(set(next_level))
-    print(session.cookies.get_dict())
+    
     check_idor(results, session, flagged_interests, userfield, username, passfield, password, login_url)
 
     return results, flagged_interests
@@ -316,7 +315,6 @@ def check_idor(links, session, flagged_set, userfield, username, passfield, pass
     3. Now do ?*=x++ and check for length difference
     """
     urls = set()
-    # print(f'BEFORE LOGIN: {session.cookies.get_dict()}')
 
     for link in links:
         if re.search(IDOR, link[0]):
@@ -327,19 +325,18 @@ def check_idor(links, session, flagged_set, userfield, username, passfield, pass
     # Check if it's an autenticated or unauthenticated idor scan first!
     if userfield:
         session = automated_login(userfield, username, passfield, password, login_url)
-    # print(f'AFTER LOGIN: {session.cookies.get_dict()}')
 
     for url in idor_links:
         print(f"\nScanning: {url}")
         sizes = {}
         # place_holder = f'{url.split('=')[0]}?'
         r = session.get(url, timeout=10, verify=False)
-        sizes['yours'] = len(r.text)
-        r = session.get(url.split('=')[0] + "=098322", timeout=10, verify=False)
-        sizes['nonexistent'] = len(r.text)
-        skidibi(url, "IDOR", session, flagged_set, sizes, sizes['nonexistent'], sizes['yours'])
+        yours = len(r.text)
+        r = session.get(url.split('=')[0] + "=123456789123456789", timeout=10, verify=False)
+        nonexistent = len(r.text)
+        challenge_idor(url, "idor", session, flagged_set, nonexistent, yours)
 
-def skidibi(url, keyword, session, flagged_set, sizes, nonexistent, yours, iterations=24):
+def challenge_idor(url, keyword, session, flagged_set, nonexistent, yours, iterations=24):
     """
     data types
     url: string
@@ -351,7 +348,8 @@ def skidibi(url, keyword, session, flagged_set, sizes, nonexistent, yours, itera
     yours: int
     iterations: int
     """
-    for attempt in range(iterations):
+    sizes = {}
+    for attempt in range(1, iterations):
         r = session.get(url.split('=')[0] + f"={attempt}", timeout=10, verify=False)
         sizes[attempt] = len(r.text)
         if len(r.text) != nonexistent and len(r.text) != yours:
@@ -431,6 +429,7 @@ def main():
     session = None 
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     userfield, username, passfield, password, login_url = None, None, None, None, None
+
     # Optional login
     if args.username and args.password and args.auth:
         try:
@@ -458,6 +457,7 @@ def main():
     # Fingerprint
     fp_result = fingerprint_site(session, base_url)
     print("\n[===== Directory Traversal scans & crawling =====]")
+
     if fp_result:
         print("[+] Fingerprinting Results:")
         for key, value in fp_result.items():
@@ -508,7 +508,7 @@ def main():
     print("\nValid Directories/Pages Found:")
     if found_results:
         for url_found, status in found_results:
-            print(f"    {url_found} - Status: {status}")
+            print(f"    {url_found} (Status: {status})")
     else:
         print("    None.")
 
@@ -533,24 +533,17 @@ def main():
     # API endpoint testing
     if any("api" in url.lower() for url, _ in flagged):
         while True:
-            api_input = input("\nTest for vulnerable API endpoint? (Default [N]): ").strip().lower()
+            api_input = input("\nTest for vulnerable API endpoints? (Default [N]): ").strip().lower()
             if api_input == 'y':
 
-                ### Can be improved - make session persistent ###
-                if args.username is None:
-                    session = requests.Session()
-                else:
-                    session = automated_login(userfield, username, passfield, password, login_url)
-                #################################################
-                
                 flagged_api = {item for item in flagged if "api" in item[0].lower()}
                 
                 for links in flagged_api:
                     url = links[0]
-                    links2 = extract_internal_links(session, session.get(url, timeout=10, verify=False).text, url, urlparse(url).netloc)
+                    internal_links = extract_internal_links(session, session.get(url, timeout=10, verify=False).text, url, urlparse(url).netloc)
                 api_links = set()
 
-                for links in links2:
+                for links in internal_links:
                     parsed = urlparse(links)
                     if parsed.path != '':
                         api_url = urljoin(url + "/", parsed.path.lstrip("/"))
@@ -600,20 +593,18 @@ def main():
                     challenge_api(session, api_endpoints)
                     print(f"\nInvoking API with unauthenticated session...\n")
                     for endpoints in api_endpoints:
-                        print(f"[+] Testing API: {endpoints}    (Status: {requests.get(endpoints, timeout=10, verify=False).status_code})")
+                        result_api = requests.get(endpoints, timeout=10, verify=False).status_code
+                        print(f"[+] Testing API: {endpoints}    (Status: {result_api})")
                 
                 api_idor = input("\nTest for IDOR in API endpoints? (Default [N]): ").strip().lower()
                 if api_idor == 'y':
-                    api_idor_set = set()
-                    for endpoints in api_endpoints:
-                        lhs, _ = endpoints.split("?")
-                        a = session.get(lhs, timeout=10, verify=False)
-                        print(a.text)
+                    api_set = set()
 
-                        # api_idor_set.add(lhs)
-                    
-
-
+                    for i in api_endpoints:
+                        yours = session.get(i, timeout=10, verify=False).text
+                        nonexistent = session.get(i.split('=')[0] + "=98322", timeout=10, verify=False).text
+                        challenge_idor(i, "api-idor", session, api_set, len(nonexistent), len(yours), iterations=24)
+                break
             else:
                 break
     session.close()
