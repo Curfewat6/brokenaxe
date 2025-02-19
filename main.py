@@ -143,13 +143,6 @@ def check_special_interest(url, special_keywords, flagged_set, session):
         if kw.lower() in url_lower:
             flagged_set.add((url, kw))
             print(f"    [!] Potential interest: {url} (keyword: {kw})")
-    # for link in links:
-    #     if re.search(IDOR, link):
-    #         if idor_present(link, session):
-    #             flagged_set.add((link, "IDOR"))
-    # check_idor(url, session, links, flagged_set)
-
-
 
 def check_directory_traversal(session, url, traversal_payloads, traversal_signatures):
     for payload in traversal_payloads:
@@ -212,7 +205,12 @@ def scan_word(session,
         print(f"Error scanning {target_url}: {e}")
     return (None, None, set())
 
-def level_based_scan(session,
+def level_based_scan(userfield, 
+                     username, 
+                     passfield, 
+                     password, 
+                     login_url,
+                     session,
                      base_url,
                      wordlist_files,
                      special_interests,
@@ -307,13 +305,11 @@ def level_based_scan(session,
 
         current_level = list(set(next_level))
     print(session.cookies.get_dict())
-    # Based on ryan's scan, get all links with the ?*= pattern
-    # suspicious_idors = get_idor(results)
-    check_idor(results, session, flagged_interests)
+    check_idor(results, session, flagged_interests, userfield, username, passfield, password, login_url)
 
     return results, flagged_interests
 
-def check_idor(links, session, flagged_set):
+def check_idor(links, session, flagged_set, userfield, username, passfield, password, login_url):
     """
     1. Perform a get request with your own parameter and capture the length
     2. Perform a get request with a non existent parameter and capture the length
@@ -327,7 +323,10 @@ def check_idor(links, session, flagged_set):
             urls.add(link[0])
     print(f"\n[===== IDOR Scans =====]")
     idor_links = get_idor(list(urls))
-    session = automated_login(userfield, username, passfield, password, login_url)
+
+    # Check if it's an autenticated or unauthenticated idor scan first!
+    if userfield:
+        session = automated_login(userfield, username, passfield, password, login_url)
     # print(f'AFTER LOGIN: {session.cookies.get_dict()}')
 
     for url in idor_links:
@@ -417,11 +416,6 @@ def main():
     args = get_arguments()
     session = None 
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    global username
-    global userfield
-    global password
-    global passfield
-    global login_url
 
     # Optional login
     if args.username and args.password and args.auth:
@@ -479,6 +473,11 @@ def main():
     injection_signatures = load_wordlist("wordlists/injection_signatures.txt")
 
     found_results, flagged = level_based_scan(
+        userfield, 
+        username, 
+        passfield, 
+        password, 
+        login_url,
         session=session,
         base_url=base_url,
         wordlist_files=wordlist_files,
@@ -488,7 +487,7 @@ def main():
         injection_payloads=injection_payloads,
         injection_signatures=injection_signatures,
         max_depth=max_depth,
-        threads=threads
+        threads=threads,
     )
 
     print("\n[+] Scan Completed.")
