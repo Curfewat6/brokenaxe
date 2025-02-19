@@ -320,14 +320,16 @@ def check_idor(links, session, flagged_set):
     3. Now do ?*=x++ and check for length difference
     """
     urls = set()
-    print(f'BEFORE LOGIN: {session.cookies.get_dict()}')
+    # print(f'BEFORE LOGIN: {session.cookies.get_dict()}')
+
     for link in links:
         if re.search(IDOR, link[0]):
             urls.add(link[0])
-    print(f"\n[===== IDOR Scans =====] ONLY WORKS FOR product_page")
+    print(f"\n[===== IDOR Scans =====]")
     idor_links = get_idor(list(urls))
     session = automated_login(userfield, username, passfield, password, login_url)
-    print(f'AFTER LOGIN: {session.cookies.get_dict()}')
+    # print(f'AFTER LOGIN: {session.cookies.get_dict()}')
+
     for url in idor_links:
         print(f"\nScanning: {url}")
         sizes = {}
@@ -521,12 +523,12 @@ def main():
             api_input = input("\nTest for vulnerable API endpoint? (Default [N]): ").strip().lower()
             if api_input == 'y':
 
-                ### Can be improved ###
+                ### Can be improved - make session persistent ###
                 if args.username is None:
                     session = requests.Session()
                 else:
                     session = automated_login(userfield, username, passfield, password, login_url)
-                #######################
+                #################################################
                 
                 flagged_api = {item for item in flagged if "api" in item[0].lower()}
                 print(flagged_api)
@@ -550,12 +552,12 @@ def main():
                     if parsed_url.query:
                         found_queries.add(parsed_url.query)
 
-                ### Can be improved ###
+                ### Can be improved - make session persistent ###
                 if args.username is None:
                     session = requests.Session()
                 else:
                     session = automated_login(userfield, username, passfield, password, login_url)
-                #######################
+                #################################################
 
                 api_endpoints = test_api_endpoints(session, api_links, found_queries)
                 if not api_endpoints:
