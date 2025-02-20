@@ -15,9 +15,9 @@
             "args": [
                 "http://35.212.180.132",
                 "-u",
-                "email:Stella@email.com",
+                "email:webadministrator@ferriswheelweb.com",
                 "-p",
-                "pwd:$t3lla",
+                "pwd:admin!",
                 "--auth",
                 "process_login.php"
             ]
