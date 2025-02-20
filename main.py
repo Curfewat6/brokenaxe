@@ -3,32 +3,18 @@ import concurrent.futures
 import requests
 import urllib3
 import os
-import re
-from bs4 import BeautifulSoup
 import subprocess
-import sys
-from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 
-# regex patterns (constant)
-IDOR = re.compile(r"https?://[^\s]*\?.*=.*")
-UNIQUE = re.compile(r'/([^/]+\.php)')
+from bs4 import BeautifulSoup
+from forced_browsing import forced_browsing
+from banner import print_banner
+from login import automated_login
+from idor import challenge_idor, check_idor
+from api_check import challenge_api, test_api_endpoints
+from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 
 # Disable warnings for insecure SSL connections
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-def print_banner():
-    banner = r""" 
-    ▀█████████▄  ▄████████  ▄██████▄     ▄█   ▄█▄    ▄████████ ███▄▄▄▄      ▄████████ ▀████    ▐████▀    ▄████████      
-    ███    ███   ███    ███ ███    ███   ███ ▄███▀   ███    ███ ███▀▀▀██▄   ███    ███   ███▌   ████▀    ███    ███      
-    ███    ███   ███    ███ ███    ███   ███▐██▀     ███    █▀  ███   ███   ███    ███    ███  ▐███      ███    █▀       
-    ▄███▄▄▄██▀ ▄███▄▄▄▄██▀ ███    ███  ▄█████▀     ▄███▄▄▄     ███   ███   ███    ███    ▀███▄███▀     ▄███▄▄▄          
-    ▀▀███▀▀▀██▄▀▀███▀▀▀▀▀   ███    ███ ▀▀█████▄    ▀▀███▀▀▀     ███   ███ ▀███████████    ████▀██▄     ▀▀███▀▀▀          
-    ███    ██▄  ▀███████████ ███    ███   ███▐██▄     ███    █▄  ███   ███   ███    ███   ▐███  ▀███      ███    █▄       
-    ███    ███   ███    ███ ███    ███   ███ ▀███▄   ███    ███ ███   ███   ███    ███  ▄███     ███▄    ███    ███      
-    ▄█████████▀  ███    ███  ▀██████▀    ███   ▀█▀   ██████████  ▀█   █▀    ███    █▀  ████       ███▄   ██████████      
-                 ███    ███              ▀                                                                               
-    """
-    print(banner)
 
 def load_wordlist(file_path):
     if not os.path.exists(file_path):
@@ -39,35 +25,6 @@ def load_wordlist(file_path):
             line.strip() for line in f
             if line.strip() and not line.startswith("#")
         ]
-
-def automated_login(username_field, username, password_field, password, login_url):
-    """ Attempts to log in using the provided credentials """
-    session = requests.Session()
-    login_data = {
-        username_field: username,
-        password_field: password,
-    }
-    
-    try:
-        login_response = session.post(login_url, data=login_data, 
-                                      allow_redirects=False, verify=False)    
-        
-        # if login_response.status_code == 200:
-        #     print("Login successful")
-        # elif login_response.status_code == 302:
-        #     redirect_location = login_response.headers.get("Location", "")
-        #     print(f"[+] Redirected to: {redirect_location}")
-        #     if 'index.php' in redirect_location:
-        #         print("[+] Login successful")
-        #     else:
-        #         print("[-] Login failed, continuing as unauthenticated user")
-        # else:
-        #     print("Login failed")
-        return session
-            
-    except requests.exceptions.RequestException as e:
-        print(f"Error during login: {e}")
-        return None
 
 def fingerprint_site(session, url):
     try:
@@ -306,111 +263,9 @@ def level_based_scan(userfield,
 
         current_level = list(set(next_level))
     
-    #check_idor(results, session, flagged_interests, userfield, username, passfield, password, login_url)
+    check_idor(results, session, flagged_interests, userfield, username, passfield, password, login_url)
 
     return results, flagged_interests
-
-def check_idor(links, session, flagged_set, userfield, username, passfield, password, login_url):
-    """
-    1. Perform a get request with your own parameter and capture the length
-    2. Perform a get request with a non existent parameter and capture the length
-    3. Now do ?*=x++ and check for length difference
-    """
-    urls = set()
-
-    for link in links:
-        if re.search(IDOR, link[0]):
-            urls.add(link[0])
-    print(f"\n[===== IDOR Scans =====]")
-    idor_links = get_idor(list(urls))
-
-    # Check if it's an autenticated or unauthenticated idor scan first!
-    if userfield:
-        session = automated_login(userfield, username, passfield, password, login_url)
-
-    for url in idor_links:
-        print(f"\nScanning: {url}")
-        sizes = {}
-        # place_holder = f'{url.split('=')[0]}?'
-        r = session.get(url, timeout=10, verify=False)
-        yours = len(r.text)
-        r = session.get(url.split('=')[0] + "=123456789123456789", timeout=10, verify=False)
-        nonexistent = len(r.text)
-        challenge_idor(url, "idor", session, flagged_set, nonexistent, yours)
-
-def challenge_idor(url, keyword, session, flagged_set, nonexistent, yours, iterations=24):
-    """
-    data types
-    url: string
-    keyword: string
-    session: requests.Session
-    flagged_set: set
-    sizes: dictionary
-    nonexistent: int
-    yours: int
-    iterations: int
-    """
-    sizes = {}
-    for attempt in range(1, iterations):
-        r = session.get(url.split('=')[0] + f"={attempt}", timeout=10, verify=False)
-        sizes[attempt] = len(r.text)
-        if len(r.text) != nonexistent and len(r.text) != yours:
-            print(f"    [!] Potential {keyword} found: {url.split('=')[0]}={attempt}")
-            flagged_set.add((f"{url.split('=')[0]}={attempt}", keyword))
-    return flagged_set
-
-def get_idor(urls):
-    """
-    Return a unique list of URLs that contain the ?*= pattern
-    """
-    unique_pages = {}
-    links = []
-    for url in urls:
-        match = re.search(UNIQUE, url)
-        if match:
-            page_type = match.group(1)  # Extracts the PHP page like 'product_page.php'
-            if page_type not in unique_pages:
-                unique_pages[page_type] = url
-
-    # Print one URL from each unique page type
-    for key, value in unique_pages.items():
-        links.append(value)
-
-    return links
-
-def forced_browsing(session, url):
-    """ False-positive prone test for forced browsing
-        since it is reliant on status codes. """
-    r = session.get(url, timeout=10, verify=False)
-    if r.status_code == 200:
-        print(f"\nBroken access control in admin-protected portal: {url}")
-    elif r.status_code == 404:
-        print(f"\nPage ({url}) does not exist")
-    else:
-        print(f"\nAccess control appears to be working: {url}")
-
-def challenge_api(session, api_endpoints):
-    for test in api_endpoints:    
-        try:
-            response = session.get(test, timeout=10, verify=False)
-            print(f"[+] Testing API: {test}     (Status: {response.status_code})")
-        except requests.exceptions.RequestException as e:
-            print(f"[!] Error: {e}")
-
-def test_api_endpoints(session, api_links, found_queries):
-    api_links_to_test = []
-    for api in api_links:
-        for query in found_queries:
-            full_api_url = f"{api}/?{query}"
-            try:
-                response = session.get(full_api_url, timeout=10, verify=False)
-                print(f"[+] Testing API: {full_api_url}     (Status: {response.status_code})")
-                if response.status_code == 200:
-                    api_links_to_test.append(full_api_url)
-                    print(f"    [!] Potential API query: {query}")
-            except requests.exceptions.RequestException as e:
-                print(f"    [!] Error: {e}")
-    return api_links_to_test
 
 def get_arguments():
     parser = argparse.ArgumentParser(
@@ -429,9 +284,8 @@ def get_arguments():
 def main():
     print_banner()
     args = get_arguments()
-    session = None 
+    userfield, username, passfield, password, login_url, session = None, None, None, None, None, None
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    userfield, username, passfield, password, login_url = None, None, None, None, None
 
     # Optional login
     if args.username and args.password and args.auth:
@@ -473,7 +327,7 @@ def main():
 
                 # Construct arguments list (use correct variable names)
                 session_replay_args = [session_id, protected_page, userfield, comparison_username, passfield, comparison_password, login_url]
-                print(session_replay_args)
+                
                 # Run session_replay.py with user inputs
                 subprocess.run(["python", "session_replay.py"] + session_replay_args)
             elif protected_page:
