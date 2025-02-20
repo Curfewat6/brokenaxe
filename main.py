@@ -12,6 +12,8 @@ from login import automated_login
 from idor import challenge_idor, check_idor
 from api_check import challenge_api, test_api_endpoints
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
+from report_gen import add_to_results, report_results, create_vapt_pdf
+from session_replay import attempt_session_replay
 
 # Disable warnings for insecure SSL connections
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -325,22 +327,24 @@ def main():
                 cookies = session.cookies.get_dict()
                 session_id = cookies.get('PHPSESSID')
                 print(f"Captured PHPSESSID: {session_id}")
+                attempt_session_replay(session_id, protected_page, userfield, comparison_username, passfield, comparison_password, login_url)
 
-                # Construct arguments list (use correct variable names)
-                session_replay_args = [session_id, protected_page, userfield, comparison_username, passfield, comparison_password, login_url]
+                # # Construct arguments list (use correct variable names)
+                # session_replay_args = [session_id, protected_page, userfield, comparison_username, passfield, comparison_password, login_url]
                 
-                # Run session_replay.py with user inputs
-                subprocess.run(["python", "session_replay.py"] + session_replay_args)
+                # # Run session_replay.py with user inputs
+
+                # subprocess.run(["python", "session_replay.py"] + session_replay_args)
             elif protected_page:
                 cookies = session.cookies.get_dict()
                 session_id = cookies.get('PHPSESSID')
                 print(f"Captured PHPSESSID: {session_id}")
-                
-                # Construct arguments list (use correct variable names)
-                session_replay_args = [session_id, protected_page]
+                attempt_session_replay(session_id, protected_page, userfield, username, passfield, password, login_url)
+                # # Construct arguments list (use correct variable names)
+                # session_replay_args = [session_id, protected_page]
 
-                # Run session_replay.py with user inputs
-                subprocess.run(["python", "session_replay.py"] + session_replay_args)
+                # # Run session_replay.py with user inputs
+                # subprocess.run(["python", "session_replay.py"] + session_replay_args)
             break
         else:
             break
@@ -394,6 +398,11 @@ def main():
         max_depth=max_depth,
         threads=threads,
     )
+    
+    for all in found_results:
+        add_to_results(all)
+    for all in flagged:
+        add_to_results(all)
 
     print("\n[+] Scan Completed.")
     print("\nValid Directories/Pages Found:")
@@ -417,7 +426,9 @@ def main():
         if forced_browsing_input == 'y':
             page = input("\nEnter the page to test for forced browsing (e.g., admin.php): ").strip()
             if page:
-                forced_browsing(session, urljoin(base_url, page))
+                result = forced_browsing(session, urljoin(base_url, page))
+                if result == 200:
+                    add_to_results((urljoin(base_url, page), "forced-browsing"))
             break
         else:
             break
@@ -428,9 +439,7 @@ def main():
         while True:
             api_input = input("\nTest for vulnerable API endpoints? (Default [N]): ").strip().lower()
             if api_input == 'y':
-
                 flagged_api = {item for item in flagged if "api" in item[0].lower()}
-                
                 for links in flagged_api:
                     url = links[0]
                     internal_links = extract_internal_links(session, session.get(url, timeout=10, verify=False).text, url, urlparse(url).netloc)
@@ -488,6 +497,8 @@ def main():
                     for endpoints in api_endpoints:
                         result_api = requests.get(endpoints, timeout=10, verify=False).status_code
                         print(f"[+] Testing API: {endpoints}    (Status: {result_api})")
+                        if result_api == 200:
+                            add_to_results((endpoints, "weak API controls - unauthenticated"))
                 
                 api_idor = input("\nTest for IDOR in API endpoints? (Default [N]): ").strip().lower()
                 if api_idor == 'y':
@@ -497,12 +508,15 @@ def main():
                         yours = session.get(i, timeout=10, verify=False).text
                         nonexistent = session.get(i.split('=')[0] + "=98322", timeout=10, verify=False).text
                         challenge_idor(i, "api-idor", session, api_set, len(nonexistent), len(yours), iterations=24)
+                    for x in api_set:
+                        add_to_results(x)
                 break
             else:
                 break
 
     # Report generation
     print("\n[===== Report generation =====]")
+    create_vapt_pdf(report_results(), filename="vapt_report.pdf")
 
 
 

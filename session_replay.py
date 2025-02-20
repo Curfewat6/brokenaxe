@@ -1,10 +1,7 @@
 import requests
-import sys
-import urllib3
-from main import automated_login
+from login import automated_login
 from urllib.parse import urlparse
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from report_gen import add_to_results, report_results
 
 def attempt_session_replay_without_account(logged_in_session_id, protected_page):
     # Establish a session & set PHPSESSID
@@ -44,6 +41,7 @@ def attempt_session_replay(logged_in_session_id, protected_page, username_field,
             response = testing_session.get(protected_page, verify=False, allow_redirects=False)
  
             if response.status_code == 200:
+                add_to_results((protected_page, "session management"))
                 print("[!] Session replay attack successful! unatuhorised access to page detected.")
             else:
                 print(f"[-]Session replay attack failed. Status code: {response.status_code}")
@@ -53,28 +51,5 @@ def attempt_session_replay(logged_in_session_id, protected_page, username_field,
     else:
         print("[-] Automated login failed. Proceeding to replay attack using only provided session ID.")
         attempt_session_replay_without_account(logged_in_session_id,protected_page)
-
-if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Protected page is required")
-        sys.exit(1)
-
-    logged_in_session_id = sys.argv[1]
-    protected_page = sys.argv[2]
-
-    if len(sys.argv) == 3:
-        print("Proceeding with session replay without another account\n")
-        attempt_session_replay_without_account(logged_in_session_id, protected_page)
-    elif len(sys.argv) == 8:
-        username_field = sys.argv[3]
-        username = sys.argv[4]
-        password_field = sys.argv[5]
-        password = sys.argv[6]
-        login_url = sys.argv[7]
-        
-        attempt_session_replay(logged_in_session_id, protected_page, username_field, username, password_field, password, login_url)
-    else:
-        print("Incorrect number of arguments provided.")
-        sys.exit(1)
 
 

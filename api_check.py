@@ -1,10 +1,13 @@
 import requests
+from report_gen import add_to_results
 
 def challenge_api(session, api_endpoints):
     for test in api_endpoints:    
         try:
             response = session.get(test, timeout=10, verify=False)
             print(f"[+] Testing API: {test}     (Status: {response.status_code})")
+            if (response.status_code == 200):
+                add_to_results((test, "weak API controls - authenticated"))
         except requests.exceptions.RequestException as e:
             print(f"[!] Error: {e}")
 
