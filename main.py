@@ -95,7 +95,7 @@ def extract_internal_links(session, html, current_url, base_netloc):
             links.add(clean_url)
     return links
 
-def check_special_interest(url, special_keywords, flagged_set, session):
+def check_special_interest(url, special_keywords, flagged_set):
     url_lower = url.lower()
     for kw in special_keywords:
         if kw.lower() in url_lower:
@@ -156,7 +156,7 @@ def scan_word(session,
         if r.status_code in [200, 403, 401]:
             print(f"  Found: {target_url} (Status: {r.status_code})")
             flagged_set = set()
-            check_special_interest(target_url, special_interests, flagged_set,session)
+            check_special_interest(target_url, special_interests, flagged_set)
             check_directory_traversal(session, target_url, traversal_payloads, traversal_signatures)
             return (target_url, r.status_code, flagged_set)
     except Exception as e:
