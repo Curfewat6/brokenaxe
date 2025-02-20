@@ -311,6 +311,7 @@ def main():
     max_depth = args.depth
     threads = args.threads
 
+    # Session management
     while True:
         session_replay_input = input("\nTest for Session Replay? (Default [N]): ").strip().lower()
         if session_replay_input == 'y':
@@ -346,14 +347,14 @@ def main():
 
     # Fingerprint
     fp_result = fingerprint_site(session, base_url)
-    print("\n[===== Directory Traversal scans & crawling =====]")
+    print("\n[===== Directory scans & surface IDOR checks =====]")
 
     if fp_result:
-        print("[+] Fingerprinting Results:")
+        print("\n[+] Fingerprinting Results:")
         for key, value in fp_result.items():
             print(f"    {key}: {value}")
     else:
-        print("Fingerprinting failed or site unreachable. Exiting...")
+        print("\nFingerprinting failed or site unreachable. Exiting...")
         return
 
     # Wordlists
@@ -410,6 +411,7 @@ def main():
         print("    None.")
     
     # Forced browsing
+    print("\n[===== Forced browsing testing =====]")
     while True:
         forced_browsing_input = input("\nTest forced browsing? (Default [N]): ").strip().lower()
         if forced_browsing_input == 'y':
@@ -421,6 +423,7 @@ def main():
             break
 
     # API endpoint testing
+    print("\n[===== API testing =====]")
     if any("api" in url.lower() for url, _ in flagged):
         while True:
             api_input = input("\nTest for vulnerable API endpoints? (Default [N]): ").strip().lower()
@@ -497,6 +500,11 @@ def main():
                 break
             else:
                 break
+
+    # Report generation
+    print("\n[===== Report generation =====]")
+
+
 
     session.close()
 
