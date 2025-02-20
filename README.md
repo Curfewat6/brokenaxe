@@ -1,6 +1,6 @@
 <h1>BROKENAXE</h1>
 <h3>Broken Access Control vulnerability definition</h3>
-<p>Insecure Direct Object Reference IDOR<br>
+<p><s>Insecure Direct Object Reference IDOR</s><br>
 <s>Forced Browsing</s><br>
 Bypassing RBAC (Role-based access control)<br>
 Bypassing Function level access control<br>
