@@ -5,7 +5,7 @@
 Bypassing RBAC (Role-based access control)<br>
 Bypassing Function level access control<br>
 <s>Weak API controls</s><br>
-Session replay<br>
+<s>Session replay</s><br>
 <s>Directory traversal</s></p>
 
 
