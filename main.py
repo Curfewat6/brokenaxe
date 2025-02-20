@@ -518,8 +518,6 @@ def main():
     print("\n[===== Report generation =====]")
     create_vapt_pdf(report_results(), filename="vapt_report.pdf")
 
-
-
     session.close()
 
 if __name__ == "__main__":

@@ -116,7 +116,7 @@ def create_vapt_pdf(sorted_results, filename="vapt_report.pdf"):
     )
     
     pdf.output(filename)
-    print(f"PDF report generated: {filename}")
+    print(f"\nPDF report generated: {filename}")
 
 
 
