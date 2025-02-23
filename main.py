@@ -3,7 +3,6 @@ import concurrent.futures
 import requests
 import urllib3
 import os
-import subprocess
 
 from bs4 import BeautifulSoup
 from forced_browsing import forced_browsing
@@ -13,7 +12,7 @@ from idor import challenge_idor, check_idor
 from api_check import challenge_api, test_api_endpoints
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 from report_gen import add_to_results, report_results, create_vapt_pdf
-from session_replay import attempt_session_replay
+from session_replay import attempt_session_replay, attempt_session_replay_without_account, find_protected_page
 
 # Disable warnings for insecure SSL connections
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -280,7 +279,6 @@ def get_arguments():
     parser.add_argument('--auth', type=str, help='Authentication endpoint (e.g., process_login.php)')
     parser.add_argument("-d", "--depth", default=1, type=int, help="Max scanning depth (default: 1)")
     parser.add_argument("-t", "--threads", default=5, type=int, help="Number of threads (default: 5)")
-    parser.add_argument("-sm", "--sessionmanagement", action="store_true", help="test session management")
     return parser.parse_args()
 
 def main():
@@ -307,47 +305,11 @@ def main():
         print("[*] No login credentials provided. Proceeding with unauthenticated scan.")
         session = requests.Session()
 
-    print(f"[*] Captured Session: {session.cookies.get_dict()}")
+    #print(f"[*] Captured Session: {session.cookies.get_dict()}")
     
     base_url = args.target.rstrip("/")
     max_depth = args.depth
     threads = args.threads
-
-    # Session management
-    while True:
-        session_replay_input = input("\nTest for Session Replay? (Default [N]): ").strip().lower()
-        if session_replay_input == 'y':
-            # Get user input for username and password
-            comparison_username = input("Enter username (optional): ").strip()
-            comparison_password = input("Enter password (optional): ").strip()
-            protected_page = input("Enter protected page (required): ").strip() 
-
-            # if input exists
-            if comparison_username and comparison_password and protected_page:
-                cookies = session.cookies.get_dict()
-                session_id = cookies.get('PHPSESSID')
-                print(f"Captured PHPSESSID: {session_id}")
-                attempt_session_replay(session_id, protected_page, userfield, comparison_username, passfield, comparison_password, login_url)
-
-                # # Construct arguments list (use correct variable names)
-                # session_replay_args = [session_id, protected_page, userfield, comparison_username, passfield, comparison_password, login_url]
-                
-                # # Run session_replay.py with user inputs
-
-                # subprocess.run(["python", "session_replay.py"] + session_replay_args)
-            elif protected_page:
-                cookies = session.cookies.get_dict()
-                session_id = cookies.get('PHPSESSID')
-                print(f"Captured PHPSESSID: {session_id}")
-                attempt_session_replay(session_id, protected_page, userfield, username, passfield, password, login_url)
-                # # Construct arguments list (use correct variable names)
-                # session_replay_args = [session_id, protected_page]
-
-                # # Run session_replay.py with user inputs
-                # subprocess.run(["python", "session_replay.py"] + session_replay_args)
-            break
-        else:
-            break
 
     # Fingerprint
     fp_result = fingerprint_site(session, base_url)
@@ -418,6 +380,49 @@ def main():
             print(f"    {url} (keyword: {keyword})")
     else:
         print("    None.")
+
+
+    # Session management
+    session = automated_login(userfield, username, passfield, password, login_url)
+    while True:
+        session_replay_input = input("\nTest for Session Replay? (Default [N]): ").strip().lower()
+        if session_replay_input == 'y':
+            # Get user input for username and password
+            comparison_username = input("Enter username (optional): ").strip()
+            comparison_password = input("Enter password (optional): ").strip()
+            
+            suggest_page_input = input("\nSuggest Page to test? (Default [N]): ").strip().lower()
+            if suggest_page_input == 'y' and comparison_username and comparison_password:
+                diffs = find_protected_page(found_results,username_field=userfield, username=comparison_username, password_field=passfield, password=comparison_password, login_url=login_url)
+                first_url = next(iter(diffs))   
+                suggest_protected_page = input(f"\nAttempt on {first_url} ? (Default [N]): ").strip().lower()
+            elif suggest_page_input == 'y':
+                diffs = find_protected_page(found_results)
+                first_url = next(iter(diffs))   
+                suggest_protected_page = input(f"\nAttempt on {first_url} ? (Default [N]): ").strip().lower()
+            else:
+                suggest_protected_page = None
+
+            if suggest_protected_page == 'y':
+                protected_page = first_url
+            else:
+                protected_page = input("Enter protected page (required): ").strip() 
+
+            # Check if Protected page is entered
+            if comparison_username and comparison_password and protected_page:
+                session_cookies = session.cookies.get_dict()
+                print(f"[*] Captured Session: {session_cookies}")
+                attempt_session_replay(session_cookies, protected_page, userfield, comparison_username, passfield, comparison_password, login_url)
+
+            elif protected_page:
+                session_cookies = session.cookies.get_dict()
+                print(f"[*] Captured Session: {session_cookies}")
+                attempt_session_replay_without_account(session_cookies, protected_page)
+
+            break
+        else:
+            break
+
     
     # Forced browsing
     print("\n[===== Forced browsing testing =====]")
