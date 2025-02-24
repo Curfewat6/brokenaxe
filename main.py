@@ -391,7 +391,7 @@ def main():
             comparison_username = input("Enter username (optional): ").strip()
             comparison_password = input("Enter password (optional): ").strip()
             
-            suggest_page_input = input("\nSuggest Page to test? (Default [N]): ").strip().lower()
+            suggest_page_input = input("\nBrokenAxe to provide a list to test? (Default [N]): ").strip().lower()
             if suggest_page_input == 'y' and comparison_username and comparison_password:
                 diffs = find_protected_page(found_results,username_field=userfield, username=comparison_username, password_field=passfield, password=comparison_password, login_url=login_url)
                 first_url = next(iter(diffs))   
@@ -521,7 +521,7 @@ def main():
 
     # Report generation
     print("\n[===== Report generation =====]")
-    create_vapt_pdf(report_results(), filename="vapt_report.pdf")
+    create_vapt_pdf(report_results(), filename="vapt_report.pdf", target=urlparse(base_url).netloc)
 
     session.close()
 
