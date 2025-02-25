@@ -484,7 +484,7 @@ def main():
                         username2 = input("Enter the username (optional): ").strip()
                         password2 = input("Enter the password (optional): ").strip()
 
-                        if username2 and password2:
+                        if args.username is None:
                             login_url = input("Enter the authentication endpoint (e.g. login.php): ").strip()
                             login_url = f"{args.target}/{login_url}"
                             try:
@@ -493,11 +493,15 @@ def main():
                             except ValueError:
                                 print("[-] Incorrect format for username or password. Use: -u email:steve@email.com -p pwd:steve")
                                 return
+                        
+                        if username2 and password2:
                             session = automated_login(userfield, username2, passfield, password2, login_url)
                             print(f"\nInvoking API with account: {username2}...\n")
-                            challenge_api(session, api_endpoints)
+                            challenge_api(session, api_endpoints)                        
                         else:
                             print("[*] No valid login credentials provided. Proceeding with only unauthenticated scan.")
+                        
+
 
                         print(f"\nInvoking API with unauthenticated session...\n")
                         for endpoints in api_endpoints:
