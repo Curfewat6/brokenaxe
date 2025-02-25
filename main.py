@@ -474,49 +474,49 @@ def main():
                 #################################################
 
                 api_endpoints = test_api_endpoints(session, api_links, found_queries)
+                
                 if not api_endpoints:
                     print("[-] No potential API endpoints found.")
                     break
+                else:
+                    api_input2 = input("\nPotential API endpoints found!\nTest for Weak API controls? (Default [N]): ").strip().lower()
+                    if api_input2 == 'y':
+                        username2 = input("Enter the username (optional): ").strip()
+                        password2 = input("Enter the password (optional): ").strip()
 
-                api_input2 = input("\nEnter another valid credential to test for Weak API controls? (Default [N]): ").strip().lower()
-                if api_input2 == 'y':
-                    username2 = input("\nEnter the username: ").strip()
-                    password2 = input("Enter the password: ").strip()
+                        if username2 and password2:
+                            login_url = input("Enter the authentication endpoint (e.g. login.php): ").strip()
+                            login_url = f"{args.target}/{login_url}"
+                            try:
+                                userfield, username = username2.split(':')
+                                passfield, password = password2.split(':')
+                            except ValueError:
+                                print("[-] Incorrect format for username or password. Use: -u email:steve@email.com -p pwd:steve")
+                                return
+                            session = automated_login(userfield, username2, passfield, password2, login_url)
+                            print(f"\nInvoking API with account: {username2}...\n")
+                            challenge_api(session, api_endpoints)
+                        else:
+                            print("[*] No valid login credentials provided. Proceeding with only unauthenticated scan.")
 
-                    if args.username is None:
-                        login_url = input("Enter the authentication endpoint: ").strip()
-                        login_url = f"{args.target}/{login_url}"
-                        print(login_url)
-                        try:
-                            userfield, username = username2.split(':')
-                            passfield, password = password2.split(':')
-                        except ValueError:
-                            print("[-] Incorrect format for username or password. Use: -u email:steve@email.com -p pwd:steve")
-                            return
-                        print(userfield, username, passfield, password)
-
-                    session = automated_login(userfield, username2, passfield, password2, login_url)
-                    print(f"\nInvoking API with account: {username2}...\n")
+                        print(f"\nInvoking API with unauthenticated session...\n")
+                        for endpoints in api_endpoints:
+                            result_api = requests.get(endpoints, timeout=10, verify=False).status_code
+                            print(f"[+] Testing API: {endpoints}    (Status: {result_api})")
+                            if result_api == 200:
+                                add_to_results((endpoints, "weak API controls - unauthenticated"))
                     
-                    challenge_api(session, api_endpoints)
-                    print(f"\nInvoking API with unauthenticated session...\n")
-                    for endpoints in api_endpoints:
-                        result_api = requests.get(endpoints, timeout=10, verify=False).status_code
-                        print(f"[+] Testing API: {endpoints}    (Status: {result_api})")
-                        if result_api == 200:
-                            add_to_results((endpoints, "weak API controls - unauthenticated"))
-                
-                api_idor = input("\nTest for IDOR in API endpoints? (Default [N]): ").strip().lower()
-                if api_idor == 'y':
-                    api_set = set()
+                    api_idor = input("\nTest for IDOR in API endpoints? (Default [N]): ").strip().lower()
+                    if api_idor == 'y':
+                        api_set = set()
 
-                    for i in api_endpoints:
-                        yours = session.get(i, timeout=10, verify=False).text
-                        nonexistent = session.get(i.split('=')[0] + "=98322", timeout=10, verify=False).text
-                        challenge_idor(i, "api-idor", session, api_set, len(nonexistent), len(yours), iterations=24)
-                    for x in api_set:
-                        add_to_results(x)
-                break
+                        for i in api_endpoints:
+                            yours = session.get(i, timeout=10, verify=False).text
+                            nonexistent = session.get(i.split('=')[0] + "=98322", timeout=10, verify=False).text
+                            challenge_idor(i, "api-idor", session, api_set, len(nonexistent), len(yours), iterations=24)
+                        for x in api_set:
+                            add_to_results(x)
+                    break
             else:
                 break
 
