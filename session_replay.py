@@ -73,7 +73,6 @@ def find_protected_page(found_results, username_field=None, username=None, passw
 
     differences = {} 
     time.sleep(2) # give the server time to update 
-    print("Cookies: ", session2.cookies.get_dict())
 
     for url, expected_code in found_results:
         try:
