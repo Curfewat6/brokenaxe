@@ -383,7 +383,8 @@ def main():
 
 
     # Session management
-    session = automated_login(userfield, username, passfield, password, login_url)
+    if (args.username and args.password and args.auth): 
+        session = automated_login(userfield, username, passfield, password, login_url)
     while True:
         session_replay_input = input("\nTest for Session Replay? (Default [N]): ").strip().lower()
         if session_replay_input == 'y':
