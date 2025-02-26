@@ -6,7 +6,7 @@ IDOR = re.compile(r"https?://[^\s]*\?.*=.*")
 UNIQUE = re.compile(r'/([^/]+\.php)')
 RED_FLAGS = [404, 403, 400]
 
-def check_idor(links, session, flagged_set, userfield, username, passfield, password, login_url):
+def check_idor(links, session, flagged_set, userfield, username, passfield, password, additional, login_url):
     """
     1. Perform a get request with your own parameter and capture the length
     2. Perform a get request with a non existent parameter and capture the length
@@ -22,7 +22,7 @@ def check_idor(links, session, flagged_set, userfield, username, passfield, pass
 
     # Check if it's an autenticated or unauthenticated idor scan first!
     if userfield:
-        session = automated_login(userfield, username, passfield, password, login_url)
+        session = automated_login(userfield, username, passfield, password, additional, login_url)
 
     for url in idor_links:
         print(f"\nScanning: {url}")

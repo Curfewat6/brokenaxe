@@ -170,7 +170,8 @@ def scan_word(session,
 def level_based_scan(userfield, 
                      username, 
                      passfield, 
-                     password, 
+                     password,
+                     additional, 
                      login_url,
                      session,
                      base_url,
@@ -267,7 +268,7 @@ def level_based_scan(userfield,
 
         current_level = list(set(next_level))
     
-    check_idor(results, session, flagged_interests, userfield, username, passfield, password, login_url)
+    check_idor(results, session, flagged_interests, userfield, username, passfield, password, additional, login_url)
 
     return results, flagged_interests
 
@@ -279,7 +280,7 @@ def get_arguments():
     parser.add_argument('target', type=str, help='Hostname or IP address')
     parser.add_argument('-u', '--username', type=str, help='Username field and value (e.g., email:steve@email.com)')
     parser.add_argument('-p', '--password', type=str, help='Password field and value (e.g., pwd:steve)')
-    parser.add_argument('--additonal', type=str, nargs="+" , help='Additional parameters to be passed to the login page')
+    parser.add_argument('--additional', type=str, nargs="+" , help='Additional parameters to be passed to the login page (e.g., log:Login)')
     parser.add_argument('--auth', type=str, help='Authentication endpoint (e.g., process_login.php)')
     parser.add_argument("-d", "--depth", default=1, type=int, help="Max scanning depth (default: 1)")
     parser.add_argument("-t", "--threads", default=5, type=int, help="Number of threads (default: 5)")
@@ -351,7 +352,8 @@ def main():
         userfield, 
         username, 
         passfield, 
-        password, 
+        password,
+        additional,
         login_url,
         session=session,
         base_url=base_url,
@@ -388,7 +390,7 @@ def main():
 
     # Session management
     if (args.username and args.password and args.auth): 
-        session = automated_login(userfield, username, passfield, password, login_url)
+        session = automated_login(userfield, username, passfield, password, additional, login_url)
     while True:
         session_replay_input = input("\nTest for Session Replay? (Default [N]): ").strip().lower()
         if session_replay_input == 'y':
@@ -474,7 +476,7 @@ def main():
                 if args.username is None:
                     session = requests.Session()
                 else:
-                    session = automated_login(userfield, username, passfield, password, login_url)
+                    session = automated_login(userfield, username, passfield, password, additional, login_url)
                 #################################################
 
                 api_endpoints = test_api_endpoints(session, api_links, found_queries)
@@ -499,7 +501,7 @@ def main():
                             return
                         print(userfield, username, passfield, password)
 
-                    session = automated_login(userfield, username2, passfield, password2, login_url)
+                    session = automated_login(userfield, username2, passfield, password2, additional, login_url)
                     print(f"\nInvoking API with account: {username2}...\n")
                     
                     challenge_api(session, api_endpoints)
