@@ -13,13 +13,13 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "http://35.212.180.132",
+                "https://labs.hackxpert.com/IDOR/IDOR1/",
                 "-u",
-                "email:webadministrator@ferriswheelweb.com",
+                "username:steve",
                 "-p",
-                "pwd:admin!",
+                "password:steve",
                 "--auth",
-                "process_login.php"
+                "login.php"
             ]
         }
     ]

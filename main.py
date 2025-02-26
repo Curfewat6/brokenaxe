@@ -16,6 +16,7 @@ from session_replay import attempt_session_replay, attempt_session_replay_withou
 
 # Disable warnings for insecure SSL connections
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+EXTENSIONS = ('.php', '.txt', '.html', '.aspx', '.asp', '.jsp')
 
 def load_wordlist(file_path):
     if not os.path.exists(file_path):
@@ -88,8 +89,10 @@ def extract_internal_links(session, html, current_url, base_netloc):
         # Ignore Apache sorting query parameters
         if href.startswith("?C="):
             continue
-        
-        absolute_url = urljoin(current_url, href)
+        if not(current_url.endswith(EXTENSIONS)):
+            absolute_url = urljoin(f'{current_url}/', href) 
+        else:
+            absolute_url = urljoin(current_url, href)
         parsed = urlparse(absolute_url)
         if parsed.netloc == base_netloc:
             clean_url = absolute_url.split('#')[0].rstrip('/')
