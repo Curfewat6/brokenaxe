@@ -4,8 +4,9 @@ from login import automated_login
 # regex patterns (constant)
 IDOR = re.compile(r"https?://[^\s]*\?.*=.*")
 UNIQUE = re.compile(r'/([^/]+\.php)')
+RED_FLAGS = [404, 403, 400]
 
-def check_idor(links, session, flagged_set, userfield, username, passfield, password, login_url):
+def check_idor(links, session, flagged_set, userfield, username, passfield, password, additional, login_url):
     """
     1. Perform a get request with your own parameter and capture the length
     2. Perform a get request with a non existent parameter and capture the length
@@ -14,14 +15,14 @@ def check_idor(links, session, flagged_set, userfield, username, passfield, pass
     urls = set()
 
     for link in links:
-        if re.search(IDOR, link[0]):
+        if re.search(IDOR, link[0]) and link[1] not in RED_FLAGS:
             urls.add(link[0])
     print(f"\n[===== IDOR Scans =====]")
     idor_links = get_idor(list(urls))
 
     # Check if it's an autenticated or unauthenticated idor scan first!
     if userfield:
-        session = automated_login(userfield, username, passfield, password, login_url)
+        session = automated_login(userfield, username, passfield, password, additional, login_url)
 
     for url in idor_links:
         print(f"\nScanning: {url}")
@@ -48,8 +49,8 @@ def challenge_idor(url, keyword, session, flagged_set, nonexistent, yours, itera
     sizes = {}
     for attempt in range(1, iterations):
         r = session.get(url.split('=')[0] + f"={attempt}", timeout=10, verify=False)
-        sizes[attempt] = len(r.text)
-        if len(r.text) != nonexistent and len(r.text) != yours:
+        sizes[attempt] = len(r.content)
+        if sizes[attempt] != nonexistent and sizes[attempt] != yours:
             print(f"    [!] Potential {keyword} found: {url.split('=')[0]}={attempt}")
             flagged_set.add((f"{url.split('=')[0]}={attempt}", keyword))
     return flagged_set

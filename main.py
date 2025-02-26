@@ -16,6 +16,7 @@ from session_replay import attempt_session_replay, attempt_session_replay_withou
 
 # Disable warnings for insecure SSL connections
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+EXTENSIONS = ('.php', '.txt', '.html', '.aspx', '.asp', '.jsp')
 
 def load_wordlist(file_path):
     if not os.path.exists(file_path):
@@ -88,8 +89,10 @@ def extract_internal_links(session, html, current_url, base_netloc):
         # Ignore Apache sorting query parameters
         if href.startswith("?C="):
             continue
-        
-        absolute_url = urljoin(current_url, href)
+        if not(current_url.endswith(EXTENSIONS)):
+            absolute_url = urljoin(f'{current_url}/', href) 
+        else:
+            absolute_url = urljoin(current_url, href)
         parsed = urlparse(absolute_url)
         if parsed.netloc == base_netloc:
             clean_url = absolute_url.split('#')[0].rstrip('/')
@@ -167,7 +170,8 @@ def scan_word(session,
 def level_based_scan(userfield, 
                      username, 
                      passfield, 
-                     password, 
+                     password,
+                     additional, 
                      login_url,
                      session,
                      base_url,
@@ -264,7 +268,7 @@ def level_based_scan(userfield,
 
         current_level = list(set(next_level))
     
-    check_idor(results, session, flagged_interests, userfield, username, passfield, password, login_url)
+    check_idor(results, session, flagged_interests, userfield, username, passfield, password, additional, login_url)
 
     return results, flagged_interests
 
@@ -276,6 +280,7 @@ def get_arguments():
     parser.add_argument('target', type=str, help='Hostname or IP address')
     parser.add_argument('-u', '--username', type=str, help='Username field and value (e.g., email:steve@email.com)')
     parser.add_argument('-p', '--password', type=str, help='Password field and value (e.g., pwd:steve)')
+    parser.add_argument('--additional', type=str, nargs="+" , help='Additional parameters to be passed to the login page (e.g., log:Login)')
     parser.add_argument('--auth', type=str, help='Authentication endpoint (e.g., process_login.php)')
     parser.add_argument("-d", "--depth", default=1, type=int, help="Max scanning depth (default: 1)")
     parser.add_argument("-t", "--threads", default=5, type=int, help="Number of threads (default: 5)")
@@ -284,9 +289,9 @@ def get_arguments():
 def main():
     print_banner()
     args = get_arguments()
-    userfield, username, passfield, password, login_url, session = None, None, None, None, None, None
+    userfield, username, passfield, password, login_url, session, additional = None, None, None, None, None, None, None
+    additional = args.additional
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
     # Optional login
     if args.username and args.password and args.auth:
         try:
@@ -296,7 +301,7 @@ def main():
             print("[-] Incorrect format for username or password. Use: -u email:steve@email.com -p pwd:steve")
             return
         login_url = f"{args.target}/{args.auth}"
-        session = automated_login(userfield, username, passfield, password, login_url)
+        session = automated_login(userfield, username, passfield, password, additional, login_url)
         
         if session is None:
             print("[-] Automated login failed.")
@@ -347,7 +352,8 @@ def main():
         userfield, 
         username, 
         passfield, 
-        password, 
+        password,
+        additional,
         login_url,
         session=session,
         base_url=base_url,
@@ -384,7 +390,7 @@ def main():
 
     # Session management
     if (args.username and args.password and args.auth): 
-        session = automated_login(userfield, username, passfield, password, login_url)
+        session = automated_login(userfield, username, passfield, password, additional, login_url)
     while True:
         session_replay_input = input("\nTest for Session Replay? (Default [N]): ").strip().lower()
         if session_replay_input == 'y':
@@ -454,7 +460,8 @@ def main():
                 for links in internal_links:
                     parsed = urlparse(links)
                     if parsed.path != '':
-                        api_url = urljoin(url + "/", parsed.path.lstrip("/"))
+                        # api_url = urljoin(url + "/", parsed.path.lstrip("/"))
+                        api_url = urljoin(url, parsed.path.lstrip("/"))
                         api_links.add(api_url)
 
                 for api in api_links:
@@ -470,7 +477,7 @@ def main():
                 if args.username is None:
                     session = requests.Session()
                 else:
-                    session = automated_login(userfield, username, passfield, password, login_url)
+                    session = automated_login(userfield, username, passfield, password, additional, login_url)
                 #################################################
 
                 api_endpoints = test_api_endpoints(session, api_links, found_queries)
@@ -485,7 +492,7 @@ def main():
                         password2 = input("Enter the password (optional): ").strip()
 
                         if args.username is None:
-                            login_url = input("Enter the authentication endpoint (e.g. login.php): ").strip()
+                            login_url = input("Enter the authentication endpoint: ").strip()
                             login_url = f"{args.target}/{login_url}"
                             try:
                                 userfield, username = username2.split(':')
@@ -493,15 +500,13 @@ def main():
                             except ValueError:
                                 print("[-] Incorrect format for username or password. Use: -u email:steve@email.com -p pwd:steve")
                                 return
-                        
+                            
                         if username2 and password2:
-                            session = automated_login(userfield, username2, passfield, password2, login_url)
-                            print(f"\nInvoking API with account: {username2}...\n")
-                            challenge_api(session, api_endpoints)                        
+                            session = automated_login(userfield, username2, passfield, password2, additional, login_url)
+                            print(f"\nInvoking API with account: {username2}...\n")              
+                            challenge_api(session, api_endpoints)
                         else:
                             print("[*] No valid login credentials provided. Proceeding with only unauthenticated scan.")
-                        
-
 
                         print(f"\nInvoking API with unauthenticated session...\n")
                         for endpoints in api_endpoints:
@@ -509,11 +514,11 @@ def main():
                             print(f"[+] Testing API: {endpoints}    (Status: {result_api})")
                             if result_api == 200:
                                 add_to_results((endpoints, "weak API controls - unauthenticated"))
-                    
+                
                     api_idor = input("\nTest for IDOR in API endpoints? (Default [N]): ").strip().lower()
                     if api_idor == 'y':
                         api_set = set()
-
+                            
                         for i in api_endpoints:
                             yours = session.get(i, timeout=10, verify=False).text
                             nonexistent = session.get(i.split('=')[0] + "=98322", timeout=10, verify=False).text

@@ -1,13 +1,17 @@
 import requests
 
-def automated_login(username_field, username, password_field, password, login_url):
+def automated_login(username_field, username, password_field, password, additional, login_url):
     """ Attempts to log in using the provided credentials """
     session = requests.Session()
     login_data = {
         username_field: username,
-        password_field: password,
+        password_field: password
     }
-    
+    if additional:
+        for field in additional:
+            item = field.split(':')
+            login_data[item[0]] = item[1]
+            
     try:
         login_response = session.post(login_url, data=login_data, 
                                       allow_redirects=False, verify=False)    
@@ -17,7 +21,7 @@ def automated_login(username_field, username, password_field, password, login_ur
         # elif login_response.status_code == 302:
         #     redirect_location = login_response.headers.get("Location", "")
         #     print(f"[+] Redirected to: {redirect_location}")
-        #     if 'index.php' in redirect_location:
+        #     if 'admin.php' in redirect_location:
         #         print("[+] Login successful")
         #     else:
         #         print("[-] Login failed, continuing as unauthenticated user")
@@ -28,3 +32,10 @@ def automated_login(username_field, username, password_field, password, login_ur
     except requests.exceptions.RequestException as e:
         print(f"Error during login: {e}")
         return None
+    
+def main():
+    print("This script is ran as a test")
+    automated_login("username", "steve", "password", 'steve', ['log:Login'], "https://labs.hackxpert.com/IDOR/IDOR1/login.php")
+
+if __name__ == '__main__':
+    main()
