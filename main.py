@@ -460,7 +460,8 @@ def main():
                 for links in internal_links:
                     parsed = urlparse(links)
                     if parsed.path != '':
-                        api_url = urljoin(url + "/", parsed.path.lstrip("/"))
+                        # api_url = urljoin(url + "/", parsed.path.lstrip("/"))
+                        api_url = urljoin(url, parsed.path.lstrip("/"))
                         api_links.add(api_url)
 
                 for api in api_links:
