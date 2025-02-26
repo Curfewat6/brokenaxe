@@ -279,6 +279,7 @@ def get_arguments():
     parser.add_argument('target', type=str, help='Hostname or IP address')
     parser.add_argument('-u', '--username', type=str, help='Username field and value (e.g., email:steve@email.com)')
     parser.add_argument('-p', '--password', type=str, help='Password field and value (e.g., pwd:steve)')
+    parser.add_argument('--additonal', type=str, nargs="+" , help='Additional parameters to be passed to the login page')
     parser.add_argument('--auth', type=str, help='Authentication endpoint (e.g., process_login.php)')
     parser.add_argument("-d", "--depth", default=1, type=int, help="Max scanning depth (default: 1)")
     parser.add_argument("-t", "--threads", default=5, type=int, help="Number of threads (default: 5)")
@@ -287,9 +288,9 @@ def get_arguments():
 def main():
     print_banner()
     args = get_arguments()
-    userfield, username, passfield, password, login_url, session = None, None, None, None, None, None
+    userfield, username, passfield, password, login_url, session, additional = None, None, None, None, None, None, None
+    additional = args.additional
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
     # Optional login
     if args.username and args.password and args.auth:
         try:
@@ -299,7 +300,7 @@ def main():
             print("[-] Incorrect format for username or password. Use: -u email:steve@email.com -p pwd:steve")
             return
         login_url = f"{args.target}/{args.auth}"
-        session = automated_login(userfield, username, passfield, password, login_url)
+        session = automated_login(userfield, username, passfield, password, additional, login_url)
         
         if session is None:
             print("[-] Automated login failed.")

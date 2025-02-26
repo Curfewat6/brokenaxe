@@ -1,6 +1,6 @@
 import requests
 
-def automated_login(username_field, username, password_field, password, login_url):
+def automated_login(username_field, username, password_field, password, additonal, login_url):
     """ Attempts to log in using the provided credentials """
     session = requests.Session()
     login_data = {
