@@ -301,7 +301,7 @@ def main():
             print("[-] Incorrect format for username or password. Use: -u email:steve@email.com -p pwd:steve")
             return
         login_url = f"{args.target}/{args.auth}"
-        session = automated_login(userfield, username, passfield, password, additional, login_url)
+        session = automated_login(userfield, username, passfield, password, login_url, additional)
         
         if session is None:
             print("[-] Automated login failed.")
@@ -390,7 +390,7 @@ def main():
 
     # Session management
     if (args.username and args.password and args.auth): 
-        session = automated_login(userfield, username, passfield, password, additional, login_url)
+        session = automated_login(userfield, username, passfield, password, login_url, additional)
     while True:
         session_replay_input = input("\nTest for Session Replay? (Default [N]): ").strip().lower()
         if session_replay_input == 'y':
@@ -477,7 +477,7 @@ def main():
                 if args.username is None:
                     session = requests.Session()
                 else:
-                    session = automated_login(userfield, username, passfield, password, additional, login_url)
+                    session = automated_login(userfield, username, passfield, password, login_url, additional)
                 #################################################
 
                 api_endpoints = test_api_endpoints(session, api_links, found_queries)
@@ -502,7 +502,7 @@ def main():
                                 return
                             
                         if username2 and password2:
-                            session = automated_login(userfield, username2, passfield, password2, additional, login_url)
+                            session = automated_login(userfield, username2, passfield, password2, login_url, additional)
                             print(f"\nInvoking API with account: {username2}...\n")              
                             challenge_api(session, api_endpoints)
                         else:

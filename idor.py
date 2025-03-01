@@ -22,7 +22,7 @@ def check_idor(links, session, flagged_set, userfield, username, passfield, pass
 
     # Check if it's an autenticated or unauthenticated idor scan first!
     if userfield:
-        session = automated_login(userfield, username, passfield, password, additional, login_url)
+        session = automated_login(userfield, username, passfield, password, login_url, additional)
 
     for url in idor_links:
         print(f"\nScanning: {url}")

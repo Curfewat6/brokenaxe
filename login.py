@@ -1,6 +1,6 @@
 import requests
 
-def automated_login(username_field, username, password_field, password, additional, login_url):
+def automated_login(username_field, username, password_field, password, login_url, additional=None):
     """ Attempts to log in using the provided credentials """
     session = requests.Session()
     login_data = {
@@ -35,7 +35,7 @@ def automated_login(username_field, username, password_field, password, addition
     
 def main():
     print("This script is ran as a test")
-    automated_login("username", "steve", "password", 'steve', ['log:Login'], "https://labs.hackxpert.com/IDOR/IDOR1/login.php")
+    automated_login("username", "steve", "password", 'steve', "https://labs.hackxpert.com/IDOR/IDOR1/login.php",  ['log:Login'])
 
 if __name__ == '__main__':
     main()
