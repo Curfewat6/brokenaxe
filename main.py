@@ -390,20 +390,21 @@ def main():
 
     # Session management
     if (args.username and args.password and args.auth): 
-        session = automated_login(userfield, username, passfield, password, login_url, additional)
+        session = automated_login(userfield, username, passfield, password, login_url)
     while True:
         session_replay_input = input("\nTest for Session Replay? (Default [N]): ").strip().lower()
         if session_replay_input == 'y':
             # Get user input for username and password
             comparison_username = input("Enter username (optional): ").strip()
             comparison_password = input("Enter password (optional): ").strip()
-            
+
+            # Suggest protected pages
             suggest_page_input = input("\nBrokenAxe to provide a list to test? (Default [N]): ").strip().lower()
-            if suggest_page_input == 'y' and comparison_username and comparison_password:
+            if suggest_page_input == 'y' and comparison_username and comparison_password: # If user wants suggestion and entered username and password
                 diffs = find_protected_page(found_results,username_field=userfield, username=comparison_username, password_field=passfield, password=comparison_password, login_url=login_url)
                 first_url = next(iter(diffs))   
                 suggest_protected_page = input(f"\nAttempt on {first_url} ? (Default [N]): ").strip().lower()
-            elif suggest_page_input == 'y':
+            elif suggest_page_input == 'y': # If user wants suggestion and did not enter any credentials
                 diffs = find_protected_page(found_results)
                 first_url = next(iter(diffs))   
                 suggest_protected_page = input(f"\nAttempt on {first_url} ? (Default [N]): ").strip().lower()
@@ -415,12 +416,16 @@ def main():
             else:
                 protected_page = input("Enter protected page (required): ").strip() 
 
-            # Check if Protected page is entered
+
+            # Validation check protected page inputted correctly
+            if not protected_page.startswith(("http://", "https://")):
+                protected_page = "https://" + protected_page  # Defaulting to HTTPS
+
+            # Check if Protected page is bypassed
             if comparison_username and comparison_password and protected_page:
                 session_cookies = session.cookies.get_dict()
                 print(f"[*] Captured Session: {session_cookies}")
                 attempt_session_replay(session_cookies, protected_page, userfield, comparison_username, passfield, comparison_password, login_url)
-
             elif protected_page:
                 session_cookies = session.cookies.get_dict()
                 print(f"[*] Captured Session: {session_cookies}")
