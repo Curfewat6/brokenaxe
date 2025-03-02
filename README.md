@@ -23,11 +23,23 @@ API testing will come after. Based on scan findings, URLs with queries present w
 Findings will be collated into a dictionary for report generation<br>
 </p>
 
-<h3>User Manual</h3>
+<h1>User Manual</h1>
 python main.py https://<b>WEBPAGE_URL</b>/ -u <b>USERNAME_PARAMETER</b>:<b>USERNAME_VALUE</b> <b>PASSWORD_PARAMETER</b>:<b>PASSWORD_VALUE</b> --auth <b>LOGIN_ENDPOINT</b> (.php etc)
 
 e.g. python main.py https://35.212.180.132/ -u email:webadministrator@ferriswheelweb.com -p pwd:admin! --auth process_login.php
 
+Available commands:
+-
+target: Hostname or IP address [<b>MANDATORY</b>]<br>
+-u, --username: Username field and value (e.g.) email:steve@email.com<br>
+-p, --password: Password field and value (e.g.) pwd:steve<br>
+--additional: Additional parameters to be passed to the login page<br>
+--auth: Authentication endpoint (e.g. process_login.php)<br>
+-d, --depth: Max scanning depth (default: 1)<br>
+-t, --threads: Number of threads (default: 5)<br>
+
+Usecase flow
+-
 <b>Directory & Heuristic Scan</b><br>
 Directory & Heuristic scans will be executed...
 
@@ -36,11 +48,10 @@ Test for session replay (Default: N): <br>
 Enter username (optional): steve@email.com<br>
 Enter password (optional): steve<br>
 
-For Session management, User can choose to conduct the session replay attacks or not. Additionally, user may supply credentials to enhance testing phase to check for credential-protected portals<br>
+<h3>For Session management, User can choose to conduct the session replay attacks or not. Additionally, user may supply credentials to enhance testing phase to check for credential-protected portals<br></h3>
 
+<h3>BrokenAxe will generate a list of URLs available for testing, if requested<br></h3>
 BrokenAxe to provide a list to test?: (User can specify Y/N)<br>
-
-BrokenAxe will generate a list of URLs available for testing:<br>
 URL                                                         Expected Code  Actual Code<br>
 https://35.212.180.132/logout.php                           200            302<br>
 https://35.212.180.132/transaction_history.php              200            302<br>
@@ -48,25 +59,26 @@ https://35.212.180.132/new_listing.php                      200            302<b
 https://35.212.180.132/shopping_cart.php?user_id=19         200            302<br>
 https://35.212.180.132/console.php                          200            302<br>
 https://35.212.180.132/uploads                              200            301<br>
-https://35.212.180.132/api                                  200            301<br><br>
-Attempt on https://35.212.180.132/logout.php ? (Default [N]):<br>
-User can put N, to select any other links provided within the URLs provided
+https://35.212.180.132/api                                  200            301<br>
+Attempt on https://35.212.180.132/logout.php ? (Default [N]): N
+<h3>User can put N, to select any other links provided within the URLs provided<br></h3>
 
 
-<p><b>Forced Browsing</b><br>
+
 Enter protected page (required): https://35.212.180.132/console.php<br>
 [ ] Captured Session: {'PHPSESSID': '71tqijie10jhb2nlhph3tjtuk7'}<br>
 [ ] Successfully logged in as new user. Session cookies: {'PHPSESSID': '392ebtl27t4k163eor75mm7s40'}<br>
 [ ] Changed cookies to captured cookies: {'PHPSESSID': '71tqijie10jhb2nlhph3tjtuk7'}<br>
 [ ] Session replay attack successful! unatuhorised access to page detected.<br>
 
+<p><b>Forced Browsing</b><br>
 Test forced browsing? (Default [N]): y<br>
 Enter the page to test for forced browsing (e.g., admin.php): console.php<br>
 Forced browsing to admin-protected portal: https://35.212.180.132/console.php<br>
 
 <p><b>API Testing</b><br>
 Test for vulnerable API endpoints? (Default [N]): (User can state Y/N)<br>
-Scanning for API endpoints will be executed...<br>
+<h3>Scanning for API endpoints will be executed...<br></h3>
 Test for Weak API controls? (Default [N]): (User can state Y/N)<br>
 Enter the username (optional): steve@email.com<br>
 Enter the password (optional): steve<br>
