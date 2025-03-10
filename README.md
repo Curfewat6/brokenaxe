@@ -24,66 +24,75 @@ Findings will be collated into a dictionary for report generation<br>
 </p>
 
 <h3>User Manual</h3>
-python main.py https:///webpage/ -u <username_parameter>:<username_value> <password_parameter>:<password_value> --auth <login_endpoint (.php etc)>
+python main.py https://<b>WEBPAGE_URL</b>/ -u <b>USERNAME_PARAMETER</b>:<b>USERNAME_VALUE</b> <b>PASSWORD_PARAMETER</b>:<b>PASSWORD_VALUE</b> --auth <b>LOGIN_ENDPOINT</b> (.php etc)
+
 e.g. python main.py https://35.212.180.132/ -u email:webadministrator@ferriswheelweb.com -p pwd:admin! --auth process_login.php
 
+<b>Directory & Heuristic Scan</b><br>
 Directory & Heuristic scans will be executed...
 
-Test for session replay: (User can specify Y/N)
-Enter username (optional): steve@email.com
-Enter password (optional): steve
-BrokenAxe to provide a list to test?: (User can specify Y/N)
+<p><b>Session Management</b><br>
+Test for session replay (Default: N): <br>
+Enter username (optional): steve@email.com<br>
+Enter password (optional): steve<br>
 
-BrokenAxe will generate a list of URLs available for testing:
-**URL                                                         Expected Code  Actual Code
-------------------------------------------------------------------------------------------**
-https://35.212.180.132/logout.php                           200            302
-https://35.212.180.132/transaction_history.php              200            302
-https://35.212.180.132/new_listing.php                      200            302
-https://35.212.180.132/shopping_cart.php?user_id=19         200            302
-https://35.212.180.132/console.php                          200            302
-https://35.212.180.132/uploads                              200            301
-https://35.212.180.132/api                                  200            301
-Attempt on https://35.212.180.132/logout.php ? (Default [N]): (User can put N, to select any other links provided within the URLs provided)
+For Session management, User can choose to conduct the session replay attacks or not. Additionally, user may supply credentials to enhance testing phase to check for credential-protected portals<br>
 
-Enter protected page (required): https://35.212.180.132/console.php
-[*] Captured Session: {'PHPSESSID': '71tqijie10jhb2nlhph3tjtuk7'}
-[*] Successfully logged in as new user. Session cookies: {'PHPSESSID': '392ebtl27t4k163eor75mm7s40'}
-[+] Changed cookies to captured cookies: {'PHPSESSID': '71tqijie10jhb2nlhph3tjtuk7'}
-[!] Session replay attack successful! unatuhorised access to page detected.
+BrokenAxe to provide a list to test?: (User can specify Y/N)<br>
 
-Test forced browsing? (Default [N]): y
-Enter the page to test for forced browsing (e.g., admin.php): console.php
-Forced browsing to admin-protected portal: https://35.212.180.132/console.php
+BrokenAxe will generate a list of URLs available for testing:<br>
+URL                                                         Expected Code  Actual Code<br>
+https://35.212.180.132/logout.php                           200            302<br>
+https://35.212.180.132/transaction_history.php              200            302<br>
+https://35.212.180.132/new_listing.php                      200            302<br>
+https://35.212.180.132/shopping_cart.php?user_id=19         200            302<br>
+https://35.212.180.132/console.php                          200            302<br>
+https://35.212.180.132/uploads                              200            301<br>
+https://35.212.180.132/api                                  200            301<br><br>
+Attempt on https://35.212.180.132/logout.php ? (Default [N]):<br>
+User can put N, to select any other links provided within the URLs provided
 
-Test for vulnerable API endpoints? (Default [N]): (User can state Y/N)
-Scanning for API endpoints will be executed...
-Test for Weak API controls? (Default [N]): (User can state Y/N)
-Enter the username (optional): steve@email.com
-Enter the password (optional): steve
 
-Invoking API with account: steve@email.com...
+<p><b>Forced Browsing</b><br>
+Enter protected page (required): https://35.212.180.132/console.php<br>
+[ ] Captured Session: {'PHPSESSID': '71tqijie10jhb2nlhph3tjtuk7'}<br>
+[ ] Successfully logged in as new user. Session cookies: {'PHPSESSID': '392ebtl27t4k163eor75mm7s40'}<br>
+[ ] Changed cookies to captured cookies: {'PHPSESSID': '71tqijie10jhb2nlhph3tjtuk7'}<br>
+[ ] Session replay attack successful! unatuhorised access to page detected.<br>
 
-[+] Testing API: https://35.212.180.132/api/profile/?account_id=19     (Status: 200)
-[+] Testing API: https://35.212.180.132/api/cart/?user_id=19     (Status: 200)
+Test forced browsing? (Default [N]): y<br>
+Enter the page to test for forced browsing (e.g., admin.php): console.php<br>
+Forced browsing to admin-protected portal: https://35.212.180.132/console.php<br>
 
-Invoking API with unauthenticated session...
+<p><b>API Testing</b><br>
+Test for vulnerable API endpoints? (Default [N]): (User can state Y/N)<br>
+Scanning for API endpoints will be executed...<br>
+Test for Weak API controls? (Default [N]): (User can state Y/N)<br>
+Enter the username (optional): steve@email.com<br>
+Enter the password (optional): steve<br>
 
-[+] Testing API: https://35.212.180.132/api/profile/?account_id=19    (Status: 401)
-[+] Testing API: https://35.212.180.132/api/cart/?user_id=19    (Status: 401)
+Invoking API with account: steve@email.com...<br>
 
-Test for IDOR in API endpoints? (Default [N]): y
-    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=2
-    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=3
-    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=4
-    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=6
-    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=8
-    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=9
-    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=20
-    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=21
-    [!] Potential api-idor found: https://35.212.180.132/api/cart/?user_id=2
-    [!] Potential api-idor found: https://35.212.180.132/api/cart/?user_id=9
-    [!] Potential api-idor found: https://35.212.180.132/api/cart/?user_id=20
-[===== Report generation =====]
+[+] Testing API: https://35.212.180.132/api/profile/?account_id=19     (Status: 200)<br>
+[+] Testing API: https://35.212.180.132/api/cart/?user_id=19     (Status: 200)<br>
 
-PDF report generated: vapt_report.pdf
+Invoking API with unauthenticated session...<br>
+
+[+] Testing API: https://35.212.180.132/api/profile/?account_id=19    (Status: 401)<br>
+[+] Testing API: https://35.212.180.132/api/cart/?user_id=19    (Status: 401)<br>
+
+Test for IDOR in API endpoints? (Default [N]): y<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=2<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=3<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=4<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=6<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=8<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=9<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=20<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/profile/?account_id=21<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/cart/?user_id=2<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/cart/?user_id=9<br>
+    [!] Potential api-idor found: https://35.212.180.132/api/cart/?user_id=20<br>
+
+<p><b>Report Generation</b><br>
+PDF report generated: vapt_report.pdf<br>
